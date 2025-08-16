@@ -1,18 +1,32 @@
+// LoginScreen.tsx
 import React, { useState } from 'react';
-import { View } from 'react-native';
-import Button from '../components/Button';
-import TextField from '../components/TextField';
-import { useAuth } from '../hooks/useAuth';
+import { View, Button, ActivityIndicator, Alert } from 'react-native';
+import { loginWith } from '../services/authClient';
+import { api } from '../services/api';
 
-export default function LoginScreen() {
-    const { signIn } = useAuth();
-    const [id, setId] = useState('');
-    const [pw, setPw] = useState('');
+export default function LoginScreen({ navigation }: any) {
+    const [loading, setLoading] = useState(false);
+
+    const onGoogle = async () => {
+        try {
+            setLoading(true);
+            const r = await loginWith('GOOGLE');
+            // 토큰을 header에 실어둘 거라면:
+            // if (r?.accessToken) api.defaults.headers.common.Authorization = `Bearer ${r.accessToken}`;
+            navigation.replace('Home'); // 혹은 r.redirectUrl 활용
+        } catch (e: any) {
+            console.error(e);
+            Alert.alert('로그인 실패', e.message ?? '알 수 없는 오류');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
-        <View style={{ flex: 1, justifyContent: 'center', padding: 16 }}>
-            <TextField placeholder="ID" autoCapitalize="none" value={id} onChangeText={setId} />
-            <TextField placeholder="Password" secureTextEntry value={pw} onChangeText={setPw} />
-            <Button title="Sign in" onPress={() => signIn(id, pw)} />
+        <View style={{ padding: 24, gap: 12 }}>
+            <Button title="Sign in with Google" onPress={onGoogle} disabled={loading} />
+            {/* 필요하다면: <Button title="Sign in with Naver" onPress={() => onProvider('NAVER')} /> */}
+            {loading && <ActivityIndicator />}
         </View>
     );
 }

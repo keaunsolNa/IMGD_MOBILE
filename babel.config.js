@@ -4,7 +4,7 @@ export default function (api) {
         presets: ["babel-preset-expo"],
         plugins: [
             // Reanimated 사용 시 마지막에 유지
-            "react-native-reanimated/plugin"
+            "react-native-worklets/plugin"
         ]
     };
 };

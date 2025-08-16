@@ -6,7 +6,8 @@ const API_BASE_URL = Constants.expoConfig?.extra?.API_BASE_URL as string;
 
 export const api = axios.create({
     baseURL: API_BASE_URL,
-    withCredentials: true // if backend uses HttpOnly cookies for refresh
+    withCredentials: true,
+    headers: { 'Content-Type': 'application/json' }
 });
 
 let isRefreshing = false;
@@ -50,6 +51,10 @@ api.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+export const HealthAPI = {
+    ping: () => api.get('/actuator/health') // 서버에 맞는 간단 GET 엔드포인트로 변경 가능
+};
 
 // Convenience wrappers for domain APIs used in your project
 export const GroupAPI = {
