@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text } from 'react-native';
 import Button from '../components/Button';
 import TextField from '../components/TextField';
-import { GroupAPI } from '../services/api';
+import { GroupAPI } from '@/services/api';
 
 export default function GroupScreen() {
     const [groupNm, setGroupNm] = useState('테스트 그룹');

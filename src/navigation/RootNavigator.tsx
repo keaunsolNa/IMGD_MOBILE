@@ -5,7 +5,7 @@ import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import GroupScreen from '../screens/GroupScreen';
 import UploadScreen from '../screens/UploadScreen';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 const Stack = createNativeStackNavigator();
 

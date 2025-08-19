@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Button from '../components/Button';
-import { FileAPI } from '../services/api';
-import { getAccessToken } from '../services/storage';
+import { FileAPI } from '@/services/api';
+import { getAccessToken } from '@/services/storage';
 
 export default function UploadScreen() {
     const [uri, setUri] = useState<string | null>(null);

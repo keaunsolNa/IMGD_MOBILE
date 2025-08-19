@@ -1,8 +1,7 @@
 // LoginScreen.tsx
 import React, { useState } from 'react';
 import { View, Button, ActivityIndicator, Alert } from 'react-native';
-import { loginWith } from '../services/authClient';
-import { api } from '../services/api';
+import { CommonActions } from '@react-navigation/native';
 
 export default function LoginScreen({ navigation }: any) {
     const [loading, setLoading] = useState(false);
@@ -10,10 +9,14 @@ export default function LoginScreen({ navigation }: any) {
     const onGoogle = async () => {
         try {
             setLoading(true);
-            const r = await loginWith('GOOGLE');
             // 토큰을 header에 실어둘 거라면:
             // if (r?.accessToken) api.defaults.headers.common.Authorization = `Bearer ${r.accessToken}`;
-            navigation.replace('Home'); // 혹은 r.redirectUrl 활용
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'Main', params: { screen: 'Home' } }],
+              }),
+            );
         } catch (e: any) {
             console.error(e);
             Alert.alert('로그인 실패', e.message ?? '알 수 없는 오류');

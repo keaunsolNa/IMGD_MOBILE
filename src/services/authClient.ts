@@ -9,40 +9,75 @@ WebBrowser.maybeCompleteAuthSession();
 
 export type Provider = 'GOOGLE' | 'NAVER' | 'KAKAO';
 
+// 절대 URL 보장 (웹은 http/https)
+const toAbsolute = (raw: string) => {
+  const base =
+    (api?.defaults?.baseURL as string | undefined) ||
+    (Platform.OS === 'web' ? window.location.origin : undefined);
+  if (!raw) throw new Error('백엔드 응답에 redirectUrl이 없습니다.');
+  try {
+    return new URL(raw, base).toString();
+  } catch {
+    throw new Error(`유효하지 않은 URL: ${raw}`);
+  }
+};
+
+const makeReturnUrl = () => {
+  if (Platform.OS === 'web') {
+    // 콘솔과 백엔드 화이트리스트에 등록 필요
+    return new URL('/auth-callback', window.location.origin).toString();
+  }
+  // app.json에 "scheme": "imgd" 있어야 함
+  return AuthSession.makeRedirectUri({ scheme: 'imgd', preferLocalhost: true });
+};
+
 export async function loginWith(provider: Provider) {
-    // 1) 백엔드에서 인가 URL 수신
-    const { data } = await api.get<{ redirect_url: string }>(`/auth/${provider}`);
-    const authUrl = data.redirect_url;
+  // 1) 백엔드에서 인가 URL 수신 (camel/snake 둘 다 대응)
+  const { data } = await api.get<{ redirectUrl?: string; redirect_url?: string }>(
+    `/auth/${provider}`
+  );
+  const rawAuth = data.redirectUrl ?? data.redirect_url; // ✅ 핵심 수정
+  let authUrl = toAbsolute(rawAuth!);
 
-    // 2) 리다이렉트 URI (버전 호환: 옵션 없이 or 간단 옵션만)
-    const returnUrl =
-        Platform.OS === 'web'
-            ? window.location.origin // 예: http://localhost:8081
-            : AuthSession.makeRedirectUri(); // app.json의 scheme 사용
+  // 2) 반환(redirect) URI 생성
+  const returnUrl = makeReturnUrl();
 
-    // 3) 브라우저/탭 열어서 로그인 진행
-    const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
-    if (result.type !== 'success' || !result.url) {
-        throw new Error(
-            result.type === 'cancel' || result.type === 'dismiss'
-                ? '사용자가 취소했습니다.'
-                : '인가 실패'
-        );
+  // 3) 인가 URL에 redirect_uri 없으면 주입
+  const u = new URL(authUrl);
+
+  // 🔧 웹은 프론트 기준으로 항상 강제 세팅(포트/경로가 정확히 일치해야 함)
+  if (Platform.OS === 'web') {
+    u.searchParams.set('redirect_uri', returnUrl);
+  } else {
+    // 네이티브는 없으면 넣고, 있으면 서버 설정 유지(환경 따라 선택)
+    if (!u.searchParams.has('redirect_uri')) {
+      u.searchParams.set('redirect_uri', returnUrl);
     }
+  }
 
-    // 4) redirect된 URL에서 code 추출
-    const url = new URL(result.url);
-    const code = url.searchParams.get('code');
-    if (!code) throw new Error('인가 코드가 없습니다.');
+  authUrl = u.toString();
 
-    // 5) 백엔드 콜백으로 code 전달
-    const cb = await api.post<{ redirectUrl: string; accessToken?: string }>(
-        `/auth/login/${provider}/callback`,
-        { authorizationCode: code }
+  // 4) 실제 브라우저 탭 열기
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, returnUrl);
+  if (result.type !== 'success' || !result.url) {
+    throw new Error(
+      result.type === 'cancel' || result.type === 'dismiss'
+        ? '사용자가 취소했습니다.'
+        : '인가 실패'
     );
+  }
 
-    // 6) accessToken 저장 (refresh는 쿠키로 수신)
-    if (cb.data?.accessToken) await setAccessToken(cb.data.accessToken);
+  // 5) code 추출
+  const url = new URL(result.url);
+  const code = url.searchParams.get('code');
+  if (!code) throw new Error('인가 코드가 없습니다.');
 
-    return cb.data; // { redirectUrl, accessToken? }
+  // 6) 백엔드로 교환 요청 (필요 시 redirectUri도 함께 전달)
+  const cb = await api.post<{ redirectUrl: string; accessToken?: string }>(
+    `/auth/login/GOOGLE/callback`,
+    { authorizationCode: code, redirectUri: returnUrl }   // ← 반드시 포함
+  );
+
+  if (cb.data?.accessToken) await setAccessToken(cb.data.accessToken);
+  return cb.data;
 }

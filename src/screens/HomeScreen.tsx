@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import Button from '../components/Button';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { HealthAPI } from '@/services/api';
 
 export default function HomeScreen({ navigation }: any) {
