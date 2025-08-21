@@ -2,7 +2,9 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { getAccessToken, getRefreshToken, saveTokens, clearTokens } from './storage';
+import { getRefreshToken, saveTokens, clearTokens } from './storage';
+import { store } from '@/redux/store';
+import { setAuth } from '@/redux/authSlice';
 
 // --- 1) 백엔드 baseURL 확정 (항상 절대 URL) -------------------------
 function resolveApiBaseUrl(): string {
@@ -47,7 +49,7 @@ let queue: Array<(token?: string) => void> = [];
 function onRefreshed(token?: string) { queue.forEach(cb => cb(token)); queue = []; }
 
 api.interceptors.request.use(async (config) => {
-  const token = await getAccessToken();
+  const token = store.getState().auth.accessToken;
   if (token) {
     // 타입 경고 회피
     (config.headers as any).Authorization = `Bearer ${token}`;
@@ -72,15 +74,15 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const refreshToken = await getRefreshToken();
-        // refresh는 절대 URL로 호출해도 OK. (혹은 api.post 사용해도 무방)
-        const { data } = await axios.post(
-          `${API_BASE_URL}/auth/getAccessToken`,
-          { refreshToken },
-          { withCredentials: true }
+        // 공유 인스턴스(api)를 사용해 Authorization 헤더를 포함시킴
+        const { data } = await api.post(
+          `/auth/getAccessToken`,
+          { refreshToken }
         );
         await saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken ?? refreshToken });
         isRefreshing = false; onRefreshed(data.accessToken);
         (original.headers ||= {})['Authorization'] = `Bearer ${data.accessToken}`;
+        store.dispatch(setAuth({ accessToken: data.accessToken }));
         return api(original);
       } catch (e) {
         isRefreshing = false; onRefreshed(); await clearTokens();
@@ -98,30 +100,37 @@ export const HealthAPI = {
 
 // --- 도메인 API
 export const GroupAPI = {
-  addGroupUser: (dto: any, userId: string) => api.post(`/group/addGroupUser`, dto, { params: { userId } }),
-  makeGroupDir: (payload: { groupId: number; groupNm: string; groupMstUserId: string }) => api.post(`/file/makeGroupDir`, payload)
+  createGroup: (payload: { groupNm: string }) => api.post(`/group/createGroup`, payload),
+  addGroupUser: (dto: any, userId: string) => api.post(`/group/makeNewGroupUser`, dto, { params: { userId } }),
+  findGroupName: (userId: string) => api.get(`/group/findGroupName`, { params: { userId } }),
 };
 
 export const FileAPI = {
-  makeFile: (payload: { folderId: number|string; userId: string; fileName: string; originalFile: string; }) =>
-    api.post(`/file/makeFile`, payload),
+  makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/file/makeGroupDir`, dto),
 
-  // 2) 업로드는 credentials 포함 + Content-Type 자동(=설정하지 않음)
-  uploadBinary: async (uri: string, token?: string) => {
+  // 파일 생성: multipart/form-data로 /file/makeFile 호출
+  uploadBinary: async (
+    uri: string,
+    params: { folderId: number|string; userId: string; groupId: number|string; fileName?: string },
+    token?: string
+  ) => {
     const form = new FormData();
-    // 서버 컨트롤러의 필드명에 맞춰 조정(@RequestPart("file")면 'file')
-    form.append('file', {
+    form.append('folderId', String(params.folderId));
+    form.append('userId', params.userId);
+    form.append('groupId', String(params.groupId));
+    const fileName = params.fileName ?? 'upload.jpg';
+    form.append('fileName', fileName);
+    form.append('originalFile', {
       uri,
       type: 'image/jpeg',
-      name: 'upload.jpg'
+      name: fileName
     } as any);
 
-    return fetch(`${API_BASE_URL}/file/upload`, {
+    return fetch(`${API_BASE_URL}/file/makeFile`, {
       method: 'POST',
-      credentials: 'include', // ✅ 쿠키 사용 시 필수
+      credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       body: form
-      // ⚠️ Content-Type 수동 지정하지 말 것(FormData가 boundary 포함 자동 설정)
     }).then(r => r.json());
   }
 };
