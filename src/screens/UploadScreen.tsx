@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { FileAPI } from '@/services/api';
 import { getAccessToken } from '@/services/storage';
 import TextField from '../components/TextField';
+import { styles } from '@/styles/screens/upload/UploadScreen';
 
 export default function UploadScreen() {
     const [uri, setUri] = useState<string | null>(null);
@@ -32,19 +33,29 @@ export default function UploadScreen() {
     };
 
     return (
-        <View style={{ flex: 1, padding: 16 }}>
-            <Text>Folder ID</Text>
-            <TextField value={folderId} onChangeText={setFolderId} keyboardType="numeric" />
-            <Text>Group ID</Text>
-            <TextField value={groupId} onChangeText={setGroupId} keyboardType="numeric" />
-            <Text>User ID</Text>
-            <TextField value={userId} onChangeText={setUserId} />
-            <Text>File Name</Text>
-            <TextField value={fileName} onChangeText={setFileName} />
-            <View style={{ height: 12 }} />
+        <View style={styles.container}>
+            <View style={styles.inputContainer}>
+                <Text>Folder ID</Text>
+                <TextField value={folderId} onChangeText={setFolderId} keyboardType="numeric" />
+            </View>
+            <View style={styles.inputContainer}>
+                <Text>Group ID</Text>
+                <TextField value={groupId} onChangeText={setGroupId} keyboardType="numeric" />
+            </View>
+            <View style={styles.inputContainer}>
+                <Text>User ID</Text>
+                <TextField value={userId} onChangeText={setUserId} />
+            </View>
+            <View style={styles.inputContainer}>
+                <Text>File Name</Text>
+                <TextField value={fileName} onChangeText={setFileName} />
+            </View>
+            <View style={styles.spacing} />
             <Button title="Pick Image" onPress={pick} />
             {uri && (<>
-                <Image source={{ uri }} style={{ width: 160, height: 160, marginVertical: 12 }} />
+                <View style={styles.imageContainer}>
+                    <Image source={{ uri }} style={styles.image} />
+                </View>
                 <Button title="Upload" onPress={upload} />
             </>)}
         </View>

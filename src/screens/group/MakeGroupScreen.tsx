@@ -3,6 +3,7 @@ import { View, Text } from 'react-native';
 import Button from '../../components/Button';
 import TextField from '../../components/TextField';
 import { GroupAPI } from '@/services/api';
+import { styles } from '@/styles/screens/group/MakeGroupScreen';
 
 export default function MakeGroupScreen() {
   const [groupNm, setGroupNm] = useState('');
@@ -15,11 +16,14 @@ export default function MakeGroupScreen() {
   };
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text>Group Name</Text>
-      <TextField value={groupNm} onChangeText={setGroupNm} />
-      <View style={{ height: 12 }} />
-      <Button title="Create" onPress={createGroup} />
+    <View style={styles.container}>
+      <Text style={styles.title}>Group Name</Text>
+      <View style={styles.inputContainer}>
+        <TextField value={groupNm} onChangeText={setGroupNm} />
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Create" onPress={createGroup} />
+      </View>
     </View>
   );
 }

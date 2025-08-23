@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { View, Button, ActivityIndicator, Alert } from 'react-native';
-// import { CommonActions } from '@react-navigation/native'; // ❌ 필요 없음
 import { loginWith } from '@/services/authClient';
-// (주의) loginWithPassword / 소셜 콜백 내부에서 saveTokens(...)를 호출하도록 이미 구현됨
+import { styles } from '@/styles/screens/login/LoginScreen';
 
 export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
@@ -21,9 +20,15 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={{ padding: 24, gap: 12 }}>
-      <Button title="SIGN IN WITH GOOGLE" onPress={onGoogle} disabled={loading} />
-      {loading && <ActivityIndicator />}
+    <View style={styles.container}>
+      <View style={styles.buttonContainer}>
+        <Button title="SIGN IN WITH GOOGLE" onPress={onGoogle} disabled={loading} />
+      </View>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator />
+        </View>
+      )}
     </View>
   );
 }

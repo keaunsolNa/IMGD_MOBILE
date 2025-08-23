@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import { Picker } from '@react-native-picker/picker';
+import { styles } from '@/styles/screens/group/MakeGroupRootFolderScreen';
 
 export default function MakeGroupRootFolderScreen() {
   const [groups, setGroups] = useState<Array<{ groupId?: number; groupNm: string }>>([]);
@@ -50,22 +51,24 @@ export default function MakeGroupRootFolderScreen() {
   const canMake = !!(selected && typeof selected.groupId === 'number');
 
   return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text>그룹 선택</Text>
-      <View style={{ height: 8 }} />
-      <Picker
-        selectedValue={selectedGroupId}
-        onValueChange={(value) => {
-          setSelectedGroupId(value);
-        }}
-      >
-        <Picker.Item label="그룹을 선택하세요" value="" />
-        {groups.map((g, idx) => (
-          <Picker.Item key={idx} label={g.groupNm} value={String(g.groupId)} />
-        ))}
-      </Picker>
-      <View style={{ height: 12 }} />
-      <Button title="Make Group Root Folder" onPress={doMake} disabled={!canMake} />
+    <View style={styles.container}>
+      <Text style={styles.title}>그룹 선택</Text>
+      <View style={styles.pickerContainer}>
+        <Picker
+          selectedValue={selectedGroupId}
+          onValueChange={(value) => {
+            setSelectedGroupId(value);
+          }}
+        >
+          <Picker.Item label="그룹을 선택하세요" value="" />
+          {groups.map((g, idx) => (
+            <Picker.Item key={idx} label={g.groupNm} value={String(g.groupId)} />
+          ))}
+        </Picker>
+      </View>
+      <View style={styles.buttonContainer}>
+        <Button title="Make Group Root Folder" onPress={doMake} disabled={!canMake} />
+      </View>
     </View>
   );
 } 
