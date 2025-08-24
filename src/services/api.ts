@@ -104,6 +104,7 @@ export const GroupAPI = {
   addGroupUser: (dto: any, userId: string) => api.post(`/group/makeNewGroupUser`, dto, { params: { userId } }),
   findGroupName: (userId: string) => api.get(`/group/findGroupName`, { params: { userId } }),
   findGroupWhatInside: (userId: string) => api.get(`/group/findGroupWhatInside`, { params: { userId } }),
+  findGroupUserWhatInside: (groupId: number) => api.get(`/group/findGroupUserWhatInside`, { params: { groupId } }),
 };
 
 export const FileAPI = {

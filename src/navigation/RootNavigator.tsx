@@ -7,6 +7,9 @@ import GroupScreen from '../screens/group/GroupScreen';
 import UploadScreen from '../screens/UploadScreen';
 import MakeGroupScreen from '../screens/group/MakeGroupScreen';
 import MakeGroupRootFolderScreen from '../screens/group/MakeGroupRootFolderScreen';
+import GroupUserScreen from '../screens/group/GroupUserScreen';
+import MyPageScreen from '../screens/MyPageScreen';
+import HeaderButtons from '../components/HeaderButtons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 
@@ -16,14 +19,21 @@ export default function RootNavigator() {
     const isAuthenticated = useSelector((s: RootState) => !!s.auth.accessToken);
     return (
         <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: true }}>
+            <Stack.Navigator 
+                screenOptions={{ 
+                    headerShown: true,
+                    headerRight: () => isAuthenticated ? <HeaderButtons /> : null
+                }}
+            >
                 {isAuthenticated ? (
                     <>
                         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Groups" component={GroupScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MakeGroup" component={MakeGroupScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MakeGroupRootFolder" component={MakeGroupRootFolderScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="GroupUser" component={GroupUserScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Upload" component={UploadScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="MyPage" component={MyPageScreen} options={{ title: 'IMGD' }} />
                     </>
                 ) : (
                   <>

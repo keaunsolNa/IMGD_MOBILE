@@ -1,7 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import Button from '../components/Button';
-import { logout } from '@/services/auth';
 import { styles } from '@/styles/screens/home/HomeScreen';
 
 export default function HomeScreen({ navigation }: any) {
@@ -22,11 +21,6 @@ export default function HomeScreen({ navigation }: any) {
       <View style={styles.mainContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Welcome to IMGD</Text>
-          <TouchableOpacity style={styles.logoutIcon} onPress={logout}>
-            <View style={styles.logoutIconContainer}>
-              <Text style={styles.logoutIconText}>→</Text>
-            </View>
-          </TouchableOpacity>
         </View>
         <Text style={styles.welcomeText}>
           Select an action from the sidebar to get started
