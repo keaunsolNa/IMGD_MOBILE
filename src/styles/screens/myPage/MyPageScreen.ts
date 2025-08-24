@@ -35,6 +35,41 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
   },
+  profileSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 20,
+  },
+  profileImageContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    borderWidth: 3,
+    borderColor: '#007AFF',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  profileImageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  profileImageOverlayText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  userInfoContainer: {
+    flex: 1,
+  },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

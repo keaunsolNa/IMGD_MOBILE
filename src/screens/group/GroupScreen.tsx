@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Button from '../../components/Button';
 import { GroupAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
@@ -27,17 +27,28 @@ export default function GroupScreen({ navigation }: any) {
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const subject = getSubjectFromToken(accessToken);
 
-  useEffect(() => {
-    (async () => {
-      if (!subject) return;
-      try {
-        const { data } = await GroupAPI.findGroupWhatInside(subject);
-        setGroups(Array.isArray(data) ? data : []);
-      } catch (e: any) {
-        console.error('그룹 목록 조회 실패:', e);
-      }
-    })();
+  // 그룹 목록을 로드하는 함수
+  const loadGroups = useCallback(async () => {
+    if (!subject) return;
+    try {
+      const { data } = await GroupAPI.findGroupWhatInside(subject);
+      setGroups(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      console.error('그룹 목록 조회 실패:', e);
+    }
   }, [subject]);
+
+  // 초기 로드
+  useEffect(() => {
+    loadGroups();
+  }, [loadGroups]);
+
+  // 화면이 포커스될 때마다 그룹 목록 새로고침
+  useEffect(() => {
+    return navigation.addListener('focus', () => {
+      loadGroups();
+    });
+  }, [navigation, loadGroups]);
 
   const toggleGroupExpansion = async (groupId: number) => {
     const newExpandedGroups = new Set(expandedGroups);

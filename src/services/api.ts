@@ -2,6 +2,7 @@
 import axios from 'axios';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { getRefreshToken, saveTokens, clearTokens } from './storage';
 import { store } from '@/redux/store';
 import { setAuth } from '@/redux/authSlice';
@@ -110,6 +111,103 @@ export const GroupAPI = {
 export const UserAPI = {
   findUserByToken: () => api.get(`/user/findUserByToken`),
   updateUser: (userData: { userId: string; nickName: string }) => api.post(`/user/updateUser`, userData),
+  uploadProfileImage: async (
+    imageAsset: any,
+    userId: string,
+    token?: string
+  ) => {
+    console.log('uploadProfileImage 함수 호출됨');
+    console.log('imageAsset:', imageAsset);
+    console.log('userId:', userId);
+    console.log('token:', token ? '있음' : '없음');
+    console.log('API_BASE_URL:', API_BASE_URL);
+    console.log('Platform:', Platform.OS);
+    
+    try {
+      let fileUri;
+      
+      // 웹 환경에서는 FileSystem을 사용하지 않고 직접 이미지 URI 사용
+      if (Platform.OS === 'web') {
+        console.log('웹 환경: FileSystem 사용하지 않음');
+        
+        // 웹에서 이미지 URI가 data: 형식인 경우 처리
+        if (imageAsset.uri.startsWith('data:')) {
+          console.log('data: URI 형식의 이미지 처리');
+          fileUri = imageAsset.uri;
+        } else {
+          console.log('일반 URI 형식의 이미지 처리');
+          fileUri = imageAsset.uri;
+        }
+      } else {
+        // 네이티브 환경에서는 FileSystem 사용
+        console.log('네이티브 환경: FileSystem 사용');
+        const tempFileUri = `${FileSystem.documentDirectory}temp_profile_${Date.now()}.jpg`;
+        console.log('임시 파일 경로:', tempFileUri);
+        
+        await FileSystem.copyAsync({
+          from: imageAsset.uri,
+          to: tempFileUri
+        });
+        console.log('임시 파일 생성 완료');
+        fileUri = tempFileUri;
+      }
+
+      const form = new FormData();
+      form.append('folderId', '1'); // 프로필 이미지용 기본 폴더 ID
+      form.append('userId', userId);
+      form.append('groupId', '1'); // 프로필 이미지용 기본 그룹 ID
+      form.append('fileName', 'profile.jpg');
+      
+      // 파일 추가
+      if (Platform.OS === 'web') {
+        // 웹에서는 Blob으로 변환
+        try {
+          const response = await fetch(fileUri);
+          const blob = await response.blob();
+          form.append('originalFile', blob, 'profile.jpg');
+        } catch (blobError) {
+          console.error('Blob 변환 실패:', blobError);
+          // Blob 변환 실패 시 원본 URI 사용
+          form.append('originalFile', {
+            uri: fileUri,
+            type: 'image/jpeg',
+            name: 'profile.jpg'
+          } as any);
+        }
+      } else {
+        // 네이티브에서는 파일 경로 사용
+        form.append('originalFile', {
+          uri: fileUri,
+          type: 'image/jpeg',
+          name: 'profile.jpg'
+        } as any);
+      }
+
+      console.log('FormData 생성 완료, fetch 요청 시작');
+      console.log('요청 URL:', `${API_BASE_URL}/file/makeUserProfileImg`);
+      
+      const response = await fetch(`${API_BASE_URL}/file/makeUserProfileImg`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form
+      });
+
+      console.log('fetch 응답 상태:', response.status);
+      console.log('fetch 응답 헤더:', response.headers);
+
+      // 네이티브 환경에서만 임시 파일 삭제
+      if (Platform.OS !== 'web') {
+        await FileSystem.deleteAsync(fileUri, { idempotent: true });
+        console.log('임시 파일 삭제 완료');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('프로필 이미지 업로드 중 오류:', error);
+      throw error;
+    }
+  }
 };
 
 export const FileAPI = {

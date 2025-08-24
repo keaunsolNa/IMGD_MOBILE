@@ -17,4 +17,13 @@ export type UserTableDTO = {
   loginType: string;
   lastLoginDate: string;
   regDtm: string;
+  pictureUrl?: string | null;
+};
+
+export type MakeFileDTO = {
+  folderId: number;
+  userId: string;
+  groupId: number;
+  fileName: string;
+  originalFile: any;
 };

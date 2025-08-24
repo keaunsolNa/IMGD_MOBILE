@@ -1,16 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import Button from '../../components/Button';
 import { GroupAPI, FileAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
-import { Picker } from '@react-native-picker/picker';
 import { styles } from '@/styles/screens/group/MakeGroupRootFolderScreen';
 
 export default function MakeGroupRootFolderScreen() {
   const [groups, setGroups] = useState<Array<{ groupId?: number; groupNm: string }>>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
+  const [showPicker, setShowPicker] = useState(false);
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const subject = getSubjectFromToken(accessToken);
 
@@ -54,17 +54,56 @@ export default function MakeGroupRootFolderScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>그룹 선택</Text>
       <View style={styles.pickerContainer}>
-        <Picker
-          selectedValue={selectedGroupId}
-          onValueChange={(value) => {
-            setSelectedGroupId(value);
-          }}
+        <TouchableOpacity 
+          style={styles.pickerButton}
+          onPress={() => setShowPicker(true)}
         >
-          <Picker.Item label="그룹을 선택하세요" value="" />
-          {groups.map((g, idx) => (
-            <Picker.Item key={idx} label={g.groupNm} value={String(g.groupId)} />
-          ))}
-        </Picker>
+          <Text style={styles.pickerButtonText}>
+            {selectedGroupId ? groups.find(g => String(g.groupId) === selectedGroupId)?.groupNm : '그룹을 선택하세요'}
+          </Text>
+        </TouchableOpacity>
+        
+        <Modal
+          visible={showPicker}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>그룹 선택</Text>
+              <ScrollView style={styles.modalScrollView}>
+                <TouchableOpacity 
+                  style={styles.modalItem}
+                  onPress={() => {
+                    setSelectedGroupId('');
+                    setShowPicker(false);
+                  }}
+                >
+                  <Text style={styles.modalItemText}>그룹을 선택하세요</Text>
+                </TouchableOpacity>
+                {groups.map((g, idx) => (
+                  <TouchableOpacity 
+                    key={idx} 
+                    style={styles.modalItem}
+                    onPress={() => {
+                      setSelectedGroupId(String(g.groupId));
+                      setShowPicker(false);
+                    }}
+                  >
+                    <Text style={styles.modalItemText}>{g.groupNm}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowPicker(false)}
+              >
+                <Text style={styles.modalCloseButtonText}>닫기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
       <View style={styles.buttonContainer}>
         <Button title="Make Group Root Folder" onPress={doMake} disabled={!canMake} />
