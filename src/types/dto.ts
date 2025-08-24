@@ -1,10 +1,20 @@
 // Mirror your Spring DTOs here for type safety
 export type GroupTableDTO = {
-    groupId?: number;
-    groupNm: string;
-    groupMstUserId: string;
-    regDtm?: string | null;
-    regId?: string | null;
-    modDtm?: string | null;
-    modId?: string | null;
+  groupId?: number;
+  groupNm: string;
+  groupMstUserId: string;
+  regDtm?: string | null;
+  regId?: string | null;
+  modDtm?: string | null;
+  modId?: string | null;
+};
+
+export type UserTableDTO = {
+  userId: string;
+  name: string;
+  email: string;
+  nickName: string;
+  loginType: string;
+  lastLoginDate: string;
+  regDtm: string;
 };

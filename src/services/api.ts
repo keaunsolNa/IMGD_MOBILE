@@ -107,6 +107,11 @@ export const GroupAPI = {
   findGroupUserWhatInside: (groupId: number) => api.get(`/group/findGroupUserWhatInside`, { params: { groupId } }),
 };
 
+export const UserAPI = {
+  findUserByToken: () => api.get(`/user/findUserByToken`),
+  updateUser: (userData: { userId: string; nickName: string }) => api.post(`/user/updateUser`, userData),
+};
+
 export const FileAPI = {
   makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/file/makeGroupDir`, dto),
 

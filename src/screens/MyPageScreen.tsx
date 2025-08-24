@@ -1,11 +1,190 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { UserAPI } from '@/services/api';
 import { styles } from '@/styles/screens/myPage/MyPageScreen';
+import type { UserTableDTO } from '@/types/dto';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/redux/store';
+import { getSubjectFromToken } from '@/services/jwt';
 
 export default function MyPageScreen() {
+  const [user, setUser] = useState<UserTableDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newNickName, setNewNickName] = useState('');
+  const [updateMessage, setUpdateMessage] = useState<{
+    text: string;
+    type: 'success' | 'error';
+  } | null>(null);
+  
+  const accessToken = useSelector((s: RootState) => s.auth.accessToken);
+  const currentUserId = getSubjectFromToken(accessToken);
+
+  // 메시지를 3초간 표시하는 함수
+  const showUpdateMessage = (text: string, type: 'success' | 'error') => {
+    setUpdateMessage({ text, type });
+    setTimeout(() => {
+      setUpdateMessage(null);
+    }, 3000);
+  };
+
+  const loadUserInfo = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await UserAPI.findUserByToken();
+      setUser(data);
+    } catch (e: any) {
+      console.error('사용자 정보 조회 실패:', e);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadUserInfo();
+  }, [loadUserInfo]);
+
+  const handleEditNickName = () => {
+    if (!user || !currentUserId) return;
+    
+    // 현재 로그인한 사용자와 마이페이지 사용자가 일치하는지 확인
+    if (user.userId !== currentUserId) {
+      showUpdateMessage('다른 사용자의 정보는 수정할 수 없습니다.', 'error');
+      return;
+    }
+    
+    setIsEditing(true);
+    setNewNickName(user.nickName);
+  };
+
+  const handleSaveNickName = async () => {
+    if (!user || !currentUserId || !newNickName.trim()) return;
+    
+    try {
+      const response = await UserAPI.updateUser({ 
+        userId: user.userId,
+        nickName: newNickName.trim() 
+      });
+      
+      // 백엔드에서 성공적으로 응답이 오면 (200 OK + UserTableDTO 반환)
+      if (response.status === 200 && response.data) {
+        // 로컬 상태 업데이트
+        setUser(prev => prev ? { ...prev, nickName: newNickName.trim() } : null);
+        setIsEditing(false);
+        setNewNickName('');
+        
+        showUpdateMessage('유저 정보가 변경되었습니다.', 'success');
+        
+        // 사용자 정보 다시 로드
+        loadUserInfo();
+      } else {
+        // 응답은 받았지만 예상과 다른 경우
+        showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+      }
+    } catch (e: any) {
+      console.error('닉네임 변경 실패:', e);
+      showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setNewNickName('');
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>My Page</Text>
+        <Text style={styles.loadingText}>사용자 정보를 불러오는 중...</Text>
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>My Page</Text>
+        <Text style={styles.errorText}>사용자 정보를 불러올 수 없습니다</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>My Page</Text>
+      
+      <View style={styles.userCard}>
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>이름</Text>
+          <Text style={styles.value}>{user.name}</Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>이메일</Text>
+          <Text style={styles.value}>{user.email}</Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>닉네임</Text>
+          {isEditing ? (
+            <View style={styles.editContainer}>
+              <TextInput
+                style={styles.editInput}
+                value={newNickName}
+                onChangeText={setNewNickName}
+                placeholder="닉네임을 입력하세요"
+                autoFocus
+              />
+              <TouchableOpacity style={styles.saveButton} onPress={handleSaveNickName}>
+                <Text style={styles.saveButtonText}>저장</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                <Text style={styles.cancelButtonText}>취소</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.valueContainer}>
+              <Text style={styles.value}>{user.nickName}</Text>
+              {user.userId === currentUserId && (
+                <TouchableOpacity style={styles.editButton} onPress={handleEditNickName}>
+                  <Text style={styles.editButtonText}>수정</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* 업데이트 메시지 표시 영역 */}
+        {updateMessage && (
+          <View style={styles.messageContainer}>
+            <Text 
+              style={[
+                styles.messageText,
+                updateMessage.type === 'success' ? styles.successMessage : styles.errorMessage
+              ]}
+            >
+              {updateMessage.text}
+            </Text>
+          </View>
+        )}
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>로그인 타입</Text>
+          <Text style={styles.value}>{user.loginType}</Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>마지막 로그인 일자</Text>
+          <Text style={styles.value}>{user.lastLoginDate}</Text>
+        </View>
+        
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>가입일</Text>
+          <Text style={styles.value}>{user.regDtm}</Text>
+        </View>
+      </View>
     </View>
   );
 }

@@ -14,13 +14,13 @@ export default function HeaderButtons() {
         onPress={() => navigation.navigate('MyPage' as never)}
       >
         <Image 
-          source={require('../assets/user/user_profile_default.png')} 
+          source={require('../../assets/icons/user_profile_default.png')} 
           style={styles.myPageIconImage}
         />
       </TouchableOpacity>
       <TouchableOpacity style={styles.logoutIcon} onPress={logout}>
         <Image 
-          source={require('../assets/common/logout.png')} 
+          source={require('../../assets/icons/logout.png')} 
           style={styles.logoutIconImage}
         />
       </TouchableOpacity>
