@@ -78,7 +78,7 @@ export default function GroupScreen({ navigation }: any) {
   };
 
   const navigateToGroupUser = (groupId: number, groupNm: string, userId: string) => {
-    navigation.navigate('GroupUser', { groupId, groupNm, userId });
+    navigation.navigate('MyPage', { targetUserId: userId, groupNm });
   };
 
   return (

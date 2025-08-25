@@ -17,7 +17,8 @@ export type UserTableDTO = {
   loginType: string;
   lastLoginDate: string;
   regDtm: string;
-  pictureUrl?: string | null;
+  pictureNm?: string | null;
+  pictureId?: number | null;
 };
 
 export type MakeFileDTO = {

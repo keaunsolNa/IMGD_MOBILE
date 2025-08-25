@@ -4,7 +4,11 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
+    "start": "npm run start:nginx && expo start",
+    "start:nginx": "start-nginx.bat",
+    "stop:nginx": "stop-nginx.bat",
+    "restart:nginx": "npm run stop:nginx && timeout /t 2 /nobreak >nul && npm run start:nginx",
+    "cleanup": "cleanup.bat",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "lint": "eslint .",

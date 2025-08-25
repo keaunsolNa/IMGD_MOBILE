@@ -7,26 +7,26 @@ import { getRefreshToken, saveTokens, clearTokens } from './storage';
 import { store } from '@/redux/store';
 import { setAuth } from '@/redux/authSlice';
 
-// --- 1) 백엔드 baseURL 확정 (항상 절대 URL) -------------------------
+// --- 1) 백엔드 baseURL 확정 (Nginx를 통한 접근) -------------------------
 function resolveApiBaseUrl(): string {
   const fromExtra = Constants.expoConfig?.extra?.API_BASE_URL as string | undefined;
   if (fromExtra && /^https?:\/\//i.test(fromExtra)) {
     return stripTrailingSlash(fromExtra);
   }
 
-  // 개발 편의: 웹에서 extra가 없으면 현재 오리진 기준으로 백엔드 포트로 매핑
+  // 개발 편의: 웹에서 extra가 없으면 현재 오리진 기준으로 Nginx 포트로 매핑
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const u = new URL(window.location.origin);
-    // 프론트(예: 8081/19006) -> 백엔드 포트로 치환
+    // 프론트(예: 8081/19006) -> Nginx 포트로 치환
     u.protocol = 'http:';          // 개발 서버 가정
-    u.port = '8080';              // ✅ 실제 백엔드 포트로 바꾸세요
+    u.port = '80';                 // ✅ Nginx 포트 (기본 80)
     return stripTrailingSlash(u.toString());
   }
 
-  // 네이티브(에뮬레이터/실기기) 기본값 (원하는 값으로 교체)
+  // 네이티브(에뮬레이터/실기기) 기본값 - Nginx를 통한 접근
   // Android 에뮬레이터: 10.0.2.2, iOS 시뮬레이터: localhost
-  if (Platform.OS === 'android') return 'http://10.0.2.2:8080';
-  return 'http://localhost:8080';
+  if (Platform.OS === 'android') return 'http://10.0.2.2:80';
+  return 'http://localhost:80';
 }
 
 function stripTrailingSlash(s: string) {
@@ -34,6 +34,21 @@ function stripTrailingSlash(s: string) {
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();
+
+// --- 프로필 이미지 URL 생성 함수 (Nginx 정적 파일 서빙용) ----------------
+export const getProfileImageUrl = (pictureUrl: string | null | undefined): any => {
+  if (!pictureUrl) {
+    return { uri: `${API_BASE_URL}/images/default/user_profile_default.png` };
+  }
+  
+  // 백엔드에서 반환하는 파일명만 추출 (경로 제거)
+  const filename = pictureUrl.split('/').pop() || pictureUrl;
+  
+  // 파일명에 확장자가 없으면 .webp 추가
+  const filenameWithExtension = filename.includes('.') ? filename : `${filename}.webp`;
+  
+  return { uri: `${API_BASE_URL}/images/profile/${filenameWithExtension}` };
+};
 
 // -------------------------------------------------------------------
 
@@ -101,16 +116,17 @@ export const HealthAPI = {
 
 // --- 도메인 API
 export const GroupAPI = {
-  createGroup: (payload: { groupNm: string }) => api.post(`/group/createGroup`, payload),
-  addGroupUser: (dto: any, userId: string) => api.post(`/group/makeNewGroupUser`, dto, { params: { userId } }),
-  findGroupName: (userId: string) => api.get(`/group/findGroupName`, { params: { userId } }),
-  findGroupWhatInside: (userId: string) => api.get(`/group/findGroupWhatInside`, { params: { userId } }),
-  findGroupUserWhatInside: (groupId: number) => api.get(`/group/findGroupUserWhatInside`, { params: { groupId } }),
+  createGroup: (payload: { groupNm: string }) => api.post(`/api/group/createGroup`, payload),
+  addGroupUser: (dto: any, userId: string) => api.post(`/api/group/makeNewGroupUser`, dto, { params: { userId } }),
+  findGroupName: (userId: string) => api.get(`/api/group/findGroupName`, { params: { userId } }),
+  findGroupWhatInside: (userId: string) => api.get(`/api/group/findGroupWhatInside`, { params: { userId } }),
+  findGroupUserWhatInside: (groupId: number) => api.get(`/api/group/findGroupUserWhatInside`, { params: { groupId } }),
 };
 
 export const UserAPI = {
-  findUserByToken: () => api.get(`/user/findUserByToken`),
-  updateUser: (userData: { userId: string; nickName: string }) => api.post(`/user/updateUser`, userData),
+  findUserByToken: () => api.get(`/api/user/findUserByToken`),
+  findUserById: (userId: string) => api.get(`/api/user/findUserById`, { params: { userId } }),
+  updateUser: (userData: { userId: string; nickName: string }) => api.post(`/api/user/updateUser`, userData),
   uploadProfileImage: async (
     imageAsset: any,
     userId: string,
@@ -184,9 +200,9 @@ export const UserAPI = {
       }
 
       console.log('FormData 생성 완료, fetch 요청 시작');
-      console.log('요청 URL:', `${API_BASE_URL}/file/makeUserProfileImg`);
+      console.log('요청 URL:', `${API_BASE_URL}/api/file/makeUserProfileImg`);
       
-      const response = await fetch(`${API_BASE_URL}/file/makeUserProfileImg`, {
+      const response = await fetch(`${API_BASE_URL}/api/file/makeUserProfileImg`, {
         method: 'POST',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -202,7 +218,19 @@ export const UserAPI = {
         console.log('임시 파일 삭제 완료');
       }
 
-      return response.json();
+      // 응답 처리 개선
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json();
+        } else {
+          // 빈 응답인 경우 성공으로 처리
+          console.log('빈 응답 수신, 성공으로 처리');
+          return { success: true, message: '프로필 이미지 업로드 성공' };
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
     } catch (error) {
       console.error('프로필 이미지 업로드 중 오류:', error);
       throw error;
@@ -211,9 +239,9 @@ export const UserAPI = {
 };
 
 export const FileAPI = {
-  makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/file/makeGroupDir`, dto),
+  makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/api/file/makeGroupDir`, dto),
 
-  // 파일 생성: multipart/form-data로 /file/makeFile 호출
+  // 파일 생성: multipart/form-data로 /api/file/makeFile 호출
   uploadBinary: async (
     uri: string,
     params: { folderId: number|string; userId: string; groupId: number|string; fileName?: string },
@@ -231,7 +259,7 @@ export const FileAPI = {
       name: fileName
     } as any);
 
-    return fetch(`${API_BASE_URL}/file/makeFile`, {
+    return fetch(`${API_BASE_URL}/api/file/makeFile`, {
       method: 'POST',
       credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,

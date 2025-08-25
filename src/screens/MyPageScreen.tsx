@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { UserAPI } from '@/services/api';
+import { UserAPI, getProfileImageUrl } from '@/services/api';
 import { styles } from '@/styles/screens/myPage/MyPageScreen';
 import type { UserTableDTO } from '@/types/dto';
 import { useSelector } from 'react-redux';
@@ -9,7 +9,8 @@ import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import { getAccessToken } from '@/services/storage';
 
-export default function MyPageScreen() {
+export default function MyPageScreen({ route }: any) {
+  const { targetUserId, groupNm } = route.params || {};
   const [user, setUser] = useState<UserTableDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -33,16 +34,22 @@ export default function MyPageScreen() {
   const loadUserInfo = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await UserAPI.findUserByToken();
-
-      setUser(data);
+      
+      // targetUserId가 있으면 해당 사용자 정보 조회, 없으면 현재 로그인한 사용자 정보 조회
+      if (targetUserId) {
+        const { data } = await UserAPI.findUserById(targetUserId);
+        setUser(data);
+      } else {
+        const { data } = await UserAPI.findUserByToken();
+        setUser(data);
+      }
     } catch (e: any) {
       console.error('사용자 정보 조회 실패:', e);
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [targetUserId]);
 
   useEffect(() => {
     loadUserInfo();
@@ -150,7 +157,7 @@ export default function MyPageScreen() {
 
         console.log('업로드 응답:', response);
 
-        if (response) {
+        if (response && (response.success || response.userId)) {
           Alert.alert('성공', '프로필 이미지가 업로드되었습니다.');
           // 사용자 정보 다시 로드하여 새로운 이미지 URL 반영
           loadUserInfo();
@@ -186,7 +193,9 @@ export default function MyPageScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Page</Text>
+      <Text style={styles.title}>
+        {targetUserId ? `${groupNm || 'Group'} - User Profile` : 'My Page'}
+      </Text>
       
       <View style={styles.userCard}>
         <View style={styles.profileSection}>
@@ -196,18 +205,13 @@ export default function MyPageScreen() {
              onPress={handleProfileImageUpload}
              activeOpacity={0.7}
            >
-                           <Image
-                source={
-                  user.pictureUrl
-                    ? { uri: user.pictureUrl }
-                    : require('../../assets/icons/user_profile_default.png')
-                }
+              <Image
+                source={getProfileImageUrl(user.pictureNm)}
                 style={styles.profileImage}
-                defaultSource={require('../../assets/icons/user_profile_default.png')}
               />
-             <View style={styles.profileImageOverlay}>
-               <Text style={styles.profileImageOverlayText}>변경</Text>
-             </View>
+              <View style={styles.profileImageOverlay}>
+                <Text style={styles.profileImageOverlayText}>변경</Text>
+              </View>
            </TouchableOpacity>
           
           {/* 유저 정보 (우측) */}
