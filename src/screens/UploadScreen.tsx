@@ -23,13 +23,27 @@ export default function UploadScreen() {
 
     const upload = async () => {
         if (!uri) return;
-        const token = await getAccessToken();
-        const res = await FileAPI.uploadBinary(
-            uri,
-            { folderId: Number(folderId), userId, groupId: Number(groupId), fileName },
-            token ?? undefined
-        );
-        alert('업로드 완료: ' + JSON.stringify(res));
+        
+        try {
+            const token = await getAccessToken();
+            const response = await FileAPI.uploadBinary(
+                uri,
+                { folderId: Number(folderId), userId, groupId: Number(groupId), fileName },
+                token ?? undefined
+            );
+            
+            // ResponseEntity<String> 형식 처리
+            if (response && typeof response === 'string') {
+                alert('업로드 완료: ' + response);
+            } else if (response && response.success) {
+                alert('업로드 완료');
+            } else {
+                alert('업로드에 실패했습니다.');
+            }
+        } catch (error: any) {
+            console.error('파일 업로드 실패:', error);
+            alert('업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+        }
     };
 
     return (

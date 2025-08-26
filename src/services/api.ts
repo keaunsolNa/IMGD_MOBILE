@@ -141,6 +141,7 @@ export const UserAPI = {
     
     try {
       let fileUri;
+      let tempFileUri: string | null = null;
       
       // 웹 환경에서는 FileSystem을 사용하지 않고 직접 이미지 URI 사용
       if (Platform.OS === 'web') {
@@ -157,7 +158,7 @@ export const UserAPI = {
       } else {
         // 네이티브 환경에서는 FileSystem 사용
         console.log('네이티브 환경: FileSystem 사용');
-        const tempFileUri = `${FileSystem.documentDirectory}temp_profile_${Date.now()}.jpg`;
+        tempFileUri = `${FileSystem.documentDirectory}temp_profile_${Date.now()}.jpg`;
         console.log('임시 파일 경로:', tempFileUri);
         
         await FileSystem.copyAsync({
@@ -213,22 +214,44 @@ export const UserAPI = {
       console.log('fetch 응답 헤더:', response.headers);
 
       // 네이티브 환경에서만 임시 파일 삭제
-      if (Platform.OS !== 'web') {
-        await FileSystem.deleteAsync(fileUri, { idempotent: true });
-        console.log('임시 파일 삭제 완료');
+      if (Platform.OS !== 'web' && tempFileUri) {
+        try {
+          await FileSystem.deleteAsync(tempFileUri);
+          console.log('임시 파일 삭제 완료');
+        } catch (deleteError) {
+          console.error('임시 파일 삭제 실패:', deleteError);
+        }
       }
 
-      // 응답 처리 개선
+      // 응답 처리 개선 - 백엔드에서 DTO를 직접 반환하는 경우
       if (response.ok) {
         const contentType = response.headers.get('content-type');
+        console.log('응답 Content-Type:', contentType);
+        
         if (contentType && contentType.includes('application/json')) {
-          return response.json();
+          const responseData = await response.json();
+          console.log('응답 데이터:', responseData);
+          
+          // 백엔드에서 DTO를 직접 반환하는 경우 (userId, groupId, fileId 등이 있는 경우)
+          if (responseData && (responseData.userId || responseData.groupId || responseData.fileId || responseData.success === true)) {
+            console.log('DTO 응답으로 처리:', responseData);
+            return responseData;
+          } else if (responseData && responseData.success === false) {
+            // 실패 응답인 경우
+            console.log('실패 응답으로 처리:', responseData);
+            return responseData;
+          } else {
+            // 기존 ResponseEntity 형태인 경우
+            console.log('ResponseEntity 형태로 처리');
+            return { success: true, message: '프로필 이미지 업로드 성공' };
+          }
         } else {
           // 빈 응답인 경우 성공으로 처리
           console.log('빈 응답 수신, 성공으로 처리');
           return { success: true, message: '프로필 이미지 업로드 성공' };
         }
       } else {
+        console.error('HTTP 에러:', response.status, response.statusText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {

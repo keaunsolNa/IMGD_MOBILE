@@ -70,13 +70,31 @@ export default function GroupUserScreen({ route }: any) {
         nickName: newNickName.trim() 
       });
       
-      if (response.status === 200 && response.data) {
+      // 백엔드에서 DTO를 직접 반환하는 경우
+      if (response.data && response.data.userId) {
+        // 로컬 상태 업데이트
         setUser(prev => prev ? { ...prev, nickName: newNickName.trim() } : null);
         setIsEditing(false);
         setNewNickName('');
+        
         showUpdateMessage('유저 정보가 변경되었습니다.', 'success');
+        
+        // 사용자 정보 다시 로드
         loadUserInfo();
+      } else if (response.data && response.data.success === true) {
+        // 기존 ResponseEntity 형태인 경우
+        setUser(prev => prev ? { ...prev, nickName: newNickName.trim() } : null);
+        setIsEditing(false);
+        setNewNickName('');
+        
+        showUpdateMessage('유저 정보가 변경되었습니다.', 'success');
+        
+        // 사용자 정보 다시 로드
+        loadUserInfo();
+      } else if (response.data && response.data.success === false) {
+        showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
       } else {
+        // 응답은 받았지만 예상과 다른 경우
         showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
       }
     } catch (e: any) {
@@ -91,31 +109,25 @@ export default function GroupUserScreen({ route }: any) {
   };
 
   const handleProfileImageUpload = async () => {
-    console.log('handleProfileImageUpload 함수 호출됨');
     
     if (!user || !currentUserId) {
-      console.log('사용자 정보 또는 currentUserId가 없음');
       return;
     }
     
     // 현재 로그인한 사용자와 대상 사용자가 일치하는지 확인
     if (user.userId !== currentUserId) {
-      console.log('권한 없음: 다른 사용자');
       Alert.alert('권한 없음', '다른 사용자의 프로필은 수정할 수 없습니다.');
       return;
     }
 
     try {
-      console.log('이미지 선택 권한 요청 시작');
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        console.log('갤러리 권한 거부됨');
         Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다.');
         return;
       }
 
-      console.log('이미지 선택 시작');
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -123,23 +135,17 @@ export default function GroupUserScreen({ route }: any) {
         quality: 0.8,
       });
 
-      console.log('이미지 선택 결과:', result);
       
       if (!result.canceled && result.assets[0]) {
         const selectedImage = result.assets[0];
-        console.log('선택된 이미지:', selectedImage);
         
-        console.log('프로필 이미지 업로드 시작');
         const token = await getAccessToken();
-        console.log('토큰 획득:', token ? '있음' : '없음');
         
         const response = await UserAPI.uploadProfileImage(
           selectedImage,
           user.userId,
           token ?? undefined
         );
-
-        console.log('업로드 응답:', response);
 
         if (response) {
           Alert.alert('성공', '프로필 이미지가 업로드되었습니다.');
@@ -148,7 +154,6 @@ export default function GroupUserScreen({ route }: any) {
           Alert.alert('실패', '프로필 이미지 업로드에 실패했습니다.');
         }
       } else {
-        console.log('이미지 선택이 취소됨');
       }
     } catch (error) {
       console.error('프로필 이미지 업로드 실패:', error);
@@ -186,20 +191,24 @@ export default function GroupUserScreen({ route }: any) {
       </View>
       
       <View style={styles.userCard}>
+        {/* 프로필 사진 및 변경 버튼 */}
         <View style={styles.profileSection}>
           {/* 프로필 이미지 (좌측) */}
           <TouchableOpacity 
             style={styles.profileImageContainer}
-            onPress={handleProfileImageUpload}
-            activeOpacity={0.7}
+            onPress={user.userId === currentUserId ? handleProfileImageUpload : undefined}
+            activeOpacity={user.userId === currentUserId ? 0.7 : 1}
           >
             <Image
               source={getProfileImageUrl(user.pictureNm)}
               style={styles.profileImage}
             />
-            <View style={styles.profileImageOverlay}>
-              <Text style={styles.profileImageOverlayText}>변경</Text>
-            </View>
+            {/* 본인 프로필일 때만 변경 오버레이 표시 */}
+            {user.userId === currentUserId && (
+              <View style={styles.profileImageOverlay}>
+                <Text style={styles.profileImageOverlayText}>변경</Text>
+              </View>
+            )}
           </TouchableOpacity>
           
           {/* 유저 정보 (우측) */}

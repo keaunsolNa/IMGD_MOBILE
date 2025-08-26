@@ -7,7 +7,7 @@ import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import { styles } from '@/styles/screens/group/MakeGroupRootFolderScreen';
 
-export default function MakeGroupRootFolderScreen() {
+export default function MakeGroupRootFolderScreen({ navigation }: any) {
   const [groups, setGroups] = useState<Array<{ groupId?: number; groupNm: string }>>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [showPicker, setShowPicker] = useState(false);
@@ -39,13 +39,34 @@ export default function MakeGroupRootFolderScreen() {
     if (!selected || typeof selected.groupId !== 'number') {
       return alert('유효한 그룹을 선택하세요.');
     }
-    await FileAPI.makeGroupDir({ 
-      groupId: selected.groupId, 
-      groupNm: selected.groupNm,
-      groupMstUserId: subject 
-    });
-    await loadGroups();
-    alert('그룹 루트 폴더 생성 완료');
+    
+    try {
+      const response = await FileAPI.makeGroupDir({ 
+        groupId: selected.groupId, 
+        groupNm: selected.groupNm,
+        groupMstUserId: subject 
+      });
+      
+      // 백엔드에서 DTO를 직접 반환하는 경우 (fileId가 있는 경우)
+      if (response.data && response.data.fileId) {
+        await loadGroups();
+        alert('그룹 루트 폴더 생성 완료');
+        // Groups 페이지로 이동
+        navigation.navigate('Groups');
+      } else if (response.data && response.data.success === true) {
+        await loadGroups();
+        alert('그룹 루트 폴더 생성 완료');
+        // Groups 페이지로 이동
+        navigation.navigate('Groups');
+      } else if (response.data && response.data.success === false) {
+        alert('그룹 루트 폴더 생성에 실패했습니다.');
+      } else {
+        alert('그룹 루트 폴더 생성에 실패했습니다.');
+      }
+    } catch (error: any) {
+      console.error('그룹 루트 폴더 생성 실패:', error);
+      alert('그룹 루트 폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+    }
   };
 
   const canMake = !!(selected && typeof selected.groupId === 'number');
