@@ -9,6 +9,7 @@ import MakeGroupScreen from '../screens/group/MakeGroupScreen';
 import MakeGroupRootFolderScreen from '../screens/group/MakeGroupRootFolderScreen';
 import GroupUserScreen from '../screens/group/GroupUserScreen';
 import MyPageScreen from '../screens/MyPageScreen';
+import FriendScreen from '../screens/FriendScreen';
 import HeaderButtons from '../components/HeaderButtons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
@@ -34,6 +35,7 @@ export default function RootNavigator() {
                         <Stack.Screen name="GroupUser" component={GroupUserScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Upload" component={UploadScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MyPage" component={MyPageScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="Friend" component={FriendScreen} options={{ title: 'IMGD' }} />
                     </>
                 ) : (
                   <>

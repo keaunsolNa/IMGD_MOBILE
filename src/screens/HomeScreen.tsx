@@ -15,6 +15,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.buttonContainer}>
           <Button title="Upload" onPress={() => navigation.navigate('Upload')} />
         </View>
+        <View style={styles.buttonContainer}>
+          <Button title="Friend" onPress={() => navigation.navigate('Friend')} />
+        </View>
       </View>
 
       {/* Main Content */}

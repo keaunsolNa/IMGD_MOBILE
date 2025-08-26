@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, TouchableOpacity, Image, Modal, Text, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { logout } from '@/services/auth';
 import { styles } from '@/styles/components/HeaderButtons';
@@ -12,6 +12,12 @@ import type { UserTableDTO } from '@/types/dto';
 export default function HeaderButtons() {
   const navigation = useNavigation();
   const [userProfile, setUserProfile] = useState<UserTableDTO | null>(null);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [friendRequests, setFriendRequests] = useState<UserTableDTO[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const currentUserId = getSubjectFromToken(accessToken);
@@ -32,8 +38,119 @@ export default function HeaderButtons() {
     loadUserProfile();
   }, [currentUserId]);
 
+  // 친구 요청 개수만 로드하는 함수
+  const loadNotificationCount = useCallback(async () => {
+    if (!currentUserId) return;
+    
+    try {
+      const { data } = await UserAPI.findFriendWhoAddMeButImNot(currentUserId);
+      setNotificationCount(data?.length || 0);
+    } catch (error) {
+      console.error('알림 개수 로드 실패:', error);
+    }
+  }, [currentUserId]);
+
+  // 앱 시작 시 알림 개수 로드
+  useEffect(() => {
+    loadNotificationCount();
+  }, [loadNotificationCount]);
+
+  // 주기적으로 알림 개수 확인 (30초마다)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadNotificationCount();
+    }, 30000); // 30초마다
+
+    return () => clearInterval(interval);
+  }, [loadNotificationCount]);
+
+  // 친구 요청 목록 로드
+  const loadFriendRequests = useCallback(async () => {
+    if (!currentUserId) return;
+    
+    try {
+      setLoadingNotifications(true);
+      const { data } = await UserAPI.findFriendWhoAddMeButImNot(currentUserId);
+      setFriendRequests(data || []);
+      setNotificationCount(data?.length || 0);
+    } catch (error) {
+      console.error('친구 요청 목록 로드 실패:', error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  }, [currentUserId]);
+
+  // 알림 아이콘 클릭
+  const handleNotificationPress = async () => {
+    await loadFriendRequests();
+    setShowNotificationModal(true);
+  };
+
+  // 모달 닫기
+  const handleCloseNotificationModal = () => {
+    setShowNotificationModal(false);
+  };
+
+  // 친구 요청 수락
+  const handleAcceptFriendRequest = async (friendRequest: UserTableDTO) => {
+    if (!currentUserId) {
+      Alert.alert('오류', '사용자 ID를 찾을 수 없습니다.');
+      return;
+    }
+    
+    try {
+      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId);
+      
+      // 친구 요청 목록 새로고침
+      await loadFriendRequests();
+      // 알림 개수도 새로고침
+      await loadNotificationCount();
+      
+      // 성공 메시지 표시
+      setSuccessMessage(`${friendRequest.name}님의 친구 요청을 수락했습니다!`);
+      setShowSuccessMessage(true);
+      
+      // 2초 후 모달 닫고 화면 이동
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        setShowNotificationModal(false);
+        try {
+          (navigation as any).navigate('Friend', { refresh: true });
+        } catch (navError) {
+          console.error('화면 이동 실패:', navError);
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error('친구 요청 수락 실패:', error);
+      Alert.alert('실패', '친구 요청 수락에 실패했습니다.');
+    }
+  };
+
+  // 친구 요청 거절
+  const handleRejectFriendRequest = (friendRequest: UserTableDTO) => {
+    Alert.alert('친구 요청 거절', '친구 요청 거절 기능은 추후 구현 예정입니다.');
+  };
+
   return (
     <View style={styles.headerButtons}>
+      {/* 알림 아이콘 */}
+      <TouchableOpacity 
+        style={styles.notificationIcon} 
+        onPress={handleNotificationPress}
+      >
+        <Image 
+          source={{ uri: `${API_BASE_URL}/images/default/alarm.png` }}
+          style={styles.notificationIconImage}
+        />
+        {notificationCount > 0 && (
+          <View style={styles.notificationBadge}>
+            <Text style={styles.notificationBadgeText}>{notificationCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* MyPage 아이콘 */}
       <TouchableOpacity 
         style={styles.myPageIcon} 
         onPress={() => navigation.navigate('MyPage' as never)}
@@ -43,12 +160,81 @@ export default function HeaderButtons() {
           style={styles.myPageIconImage}
         />
       </TouchableOpacity>
+
+      {/* 로그아웃 아이콘 */}
       <TouchableOpacity style={styles.logoutIcon} onPress={logout}>
         <Image 
           source={{ uri: `${API_BASE_URL}/images/default/logout.png` }}
           style={styles.logoutIconImage}
         />
       </TouchableOpacity>
+
+      {/* 친구 요청 알림 모달 */}
+      <Modal
+        visible={showNotificationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCloseNotificationModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>친구 요청</Text>
+              <TouchableOpacity onPress={handleCloseNotificationModal} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showSuccessMessage ? (
+              <View style={styles.successContainer}>
+                <Text style={styles.successText}>{successMessage}</Text>
+                <Text style={styles.successSubText}>잠시 후 My Friends 화면으로 이동합니다...</Text>
+              </View>
+            ) : loadingNotifications ? (
+              <View style={styles.loadingContainer}>
+                <Text style={styles.loadingText}>친구 요청을 불러오는 중...</Text>
+              </View>
+            ) : friendRequests.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>새로운 친구 요청이 없습니다.</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.friendRequestsList}>
+                {friendRequests.map((friendRequest) => (
+                  <View key={friendRequest.userId} style={styles.friendRequestCard}>
+                    <View style={styles.friendRequestHeader}>
+                      <Image
+                        source={getProfileImageUrl(friendRequest.pictureNm)}
+                        style={styles.friendRequestProfileImage}
+                      />
+                      <View style={styles.friendRequestInfo}>
+                        <Text style={styles.friendRequestName}>{friendRequest.name}</Text>
+                        <Text style={styles.friendRequestNickname}>{friendRequest.nickName}</Text>
+                        <Text style={styles.friendRequestEmail}>{friendRequest.email}</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.friendRequestActions}>
+                      <TouchableOpacity 
+                        style={styles.acceptButton}
+                        onPress={() => handleAcceptFriendRequest(friendRequest)}
+                      >
+                        <Text style={styles.acceptButtonText}>수락</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.rejectButton}
+                        onPress={() => handleRejectFriendRequest(friendRequest)}
+                      >
+                        <Text style={styles.rejectButtonText}>거절</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

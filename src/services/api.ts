@@ -127,6 +127,9 @@ export const UserAPI = {
   findUserByToken: () => api.get(`/api/user/findUserByToken`),
   findUserById: (userId: string) => api.get(`/api/user/findUserById`, { params: { userId } }),
   updateUser: (userData: { userId: string; nickName: string }) => api.post(`/api/user/updateUser`, userData),
+  findFriendEachOther: (userId: string) => api.get(`/api/user/findFriendEachOther`, { params: { userId } }),
+  insertUserFriendTable: (userId: string, targetUserId: string) => api.post(`/api/user/insertUserFriendTable`, null, { params: { userId, targetUserId } }),
+  findFriendWhoAddMeButImNot: (userId: string) => api.get(`/api/user/findFriendWhoAddMeButImNot`, { params: { userId } }),
   uploadProfileImage: async (
     imageAsset: any,
     userId: string,
