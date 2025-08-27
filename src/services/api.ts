@@ -130,6 +130,9 @@ export const UserAPI = {
   findFriendEachOther: (userId: string) => api.get(`/api/user/findFriendEachOther`, { params: { userId } }),
   insertUserFriendTable: (userId: string, targetUserId: string) => api.post(`/api/user/insertUserFriendTable`, null, { params: { userId, targetUserId } }),
   findFriendWhoAddMeButImNot: (userId: string) => api.get(`/api/user/findFriendWhoAddMeButImNot`, { params: { userId } }),
+  findFriendWhoImAddButNot: (userId: string) => api.get(`/api/user/findFriendWhoImAddButNot`, { params: { userId } }),
+  findFriend: (userId: string) => api.get(`/api/user/findFriend`, { params: { userId } }),
+  findFriendEachOtherAndNotInGroup: (userId: string, groupId: number) => api.get(`/api/user/findFriendEachOtherAndNotInGroup`, { params: { userId, groupId } }),
   uploadProfileImage: async (
     imageAsset: any,
     userId: string,

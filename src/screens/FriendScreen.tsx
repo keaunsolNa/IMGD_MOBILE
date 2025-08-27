@@ -12,6 +12,8 @@ export default function FriendScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const [friends, setFriends] = useState<UserTableDTO[]>([]);
+  const [pendingFriends, setPendingFriends] = useState<UserTableDTO[]>([]);
+  const [myFriends, setMyFriends] = useState<UserTableDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -29,8 +31,15 @@ export default function FriendScreen() {
     
     try {
       setLoading(true);
-      const { data } = await UserAPI.findFriendEachOther(currentUserId);
-      setFriends(data || []);
+      const [friendsResponse, pendingResponse, myFriendsResponse] = await Promise.all([
+        UserAPI.findFriendEachOther(currentUserId),
+        UserAPI.findFriendWhoImAddButNot(currentUserId),
+        UserAPI.findFriend(currentUserId)
+      ]);
+      
+      setFriends(friendsResponse.data || []);
+      setPendingFriends(pendingResponse.data || []);
+      setMyFriends(myFriendsResponse.data || []);
     } catch (error) {
       console.error('친구 목록 로드 실패:', error);
       Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
@@ -83,12 +92,38 @@ export default function FriendScreen() {
     try {
       setSearchLoading(true);
       setSearchErrorMessage(null); // 이전 에러 메시지 제거
+      setSearchedUser(null); // 이전 검색 결과 제거
+      
       const { data } = await UserAPI.findUserById(searchUserId.trim());
-      setSearchedUser(data);
+      
+      // 백엔드 응답 검증
+      if (!data || typeof data === 'number' || (Array.isArray(data) && data.length === 0)) {
+        // 데이터가 없거나 숫자(1)이거나 빈 배열인 경우
+        setSearchedUser(null);
+        setSearchErrorMessage('존재하지 않는 아이디입니다');
+        
+        // 3초 후 에러 메시지 자동 제거
+        setTimeout(() => {
+          setSearchErrorMessage(null);
+        }, 3000);
+      } else if (data && typeof data === 'object' && data.userId && data.name) {
+        // 유효한 사용자 데이터인 경우 (필수 필드 확인)
+        setSearchedUser(data);
+      } else {
+        // 예상과 다른 형태의 데이터인 경우
+        console.warn('예상과 다른 형태의 사용자 데이터:', data);
+        setSearchedUser(null);
+        setSearchErrorMessage('존재하지 않는 아이디입니다');
+        
+        // 3초 후 에러 메시지 자동 제거
+        setTimeout(() => {
+          setSearchErrorMessage(null);
+        }, 3000);
+      }
     } catch (error) {
       console.error('사용자 검색 실패:', error);
       setSearchedUser(null);
-      setSearchErrorMessage('일치하는 ID가 없습니다');
+      setSearchErrorMessage('존재하지 않는 아이디입니다');
       
       // 3초 후 에러 메시지 자동 제거
       setTimeout(() => {
@@ -105,6 +140,19 @@ export default function FriendScreen() {
     setSearchUserId('');
     setSearchedUser(null);
     setSearchErrorMessage(null);
+    setAddFriendLoading(false);
+  };
+
+  // 친구 추가 가능 여부 확인
+  const canAddFriend = (targetUserId: string): boolean => {
+    // 본인인 경우 추가 불가
+    if (targetUserId === currentUserId) return false;
+    
+    // 이미 내가 추가한 친구인 경우 추가 불가
+    const isAlreadyMyFriend = myFriends.some(friend => friend.userId === targetUserId);
+    if (isAlreadyMyFriend) return false;
+    
+    return true;
   };
 
   // 친구 추가하기
@@ -175,8 +223,10 @@ export default function FriendScreen() {
                   activeOpacity={0.7}
                 >
                   <View style={styles.friendCardHeader}>
-                    <Text style={styles.friendName}>{friend.name}</Text>
-                    <Text style={styles.friendNickname}>{friend.nickName}</Text>
+                    <View style={styles.friendNameContainer}>
+                      <Text style={styles.friendName}>{friend.name}</Text>
+                      <Text style={styles.friendNickname}>{friend.nickName}</Text>
+                    </View>
                   </View>
                   
                   <View style={styles.friendCardContent}>
@@ -194,6 +244,48 @@ export default function FriendScreen() {
               ))}
             </ScrollView>
           )}
+
+          {/* 친구 수락 대기중 목록 */}
+          <View style={styles.pendingSection}>
+            <Text style={styles.sectionTitle}>친구 수락 대기중</Text>
+            
+            {pendingFriends.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>수락 대기중인 친구 요청이 없습니다.</Text>
+              </View>
+            ) : (
+              <ScrollView style={styles.friendsList} showsVerticalScrollIndicator={true}>
+                {pendingFriends.map((pendingFriend) => (
+                  <TouchableOpacity
+                    key={pendingFriend.userId}
+                    style={styles.friendCard}
+                    onPress={() => handleFriendProfile(pendingFriend)}
+                    activeOpacity={0.7}
+                  >
+                                      <View style={styles.friendCardHeader}>
+                    <View style={styles.friendNameContainer}>
+                      <Text style={styles.friendName}>{pendingFriend.name}</Text>
+                                             <Text style={styles.friendNickname}>{pendingFriend.nickName}</Text>
+                    </View>
+                    <Text style={styles.pendingStatus}>수락 대기중</Text>
+                  </View>
+                    
+                    <View style={styles.friendCardContent}>
+                      <Image
+                        source={getProfileImageUrl(pendingFriend.pictureNm)}
+                        style={styles.friendProfileImage}
+                      />
+                      <View style={styles.friendInfo}>
+                        <Text style={styles.friendEmail}>{pendingFriend.email}</Text>
+                        <Text style={styles.friendLoginType}>{pendingFriend.loginType}</Text>
+                        <Text style={styles.friendJoinDate}>가입일: {pendingFriend.regDtm}</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
         </View>
       </View>
 
@@ -238,7 +330,7 @@ export default function FriendScreen() {
             </View>
 
             {/* 검색 결과 표시 */}
-            {searchedUser && (
+            {searchedUser && !searchErrorMessage ? (
               <View style={styles.searchResultSection}>
                 <Text style={styles.searchResultTitle}>검색 결과</Text>
                 <View style={styles.searchResultCard}>
@@ -261,32 +353,60 @@ export default function FriendScreen() {
                   </View>
                 </View>
               </View>
-            )}
+            ) : null}
 
             {/* 검색 에러 메시지 표시 */}
-            {searchErrorMessage && (
+            {searchErrorMessage ? (
               <View style={styles.searchErrorSection}>
-                <Text style={styles.searchErrorMessage}>{searchErrorMessage}</Text>
+                <Text style={[
+                  styles.searchErrorMessage,
+                  searchErrorMessage === '존재하지 않는 아이디입니다' && styles.searchErrorMessageNotFound
+                ]}>
+                  {searchErrorMessage}
+                </Text>
               </View>
-            )}
+            ) : null}
 
-            {/* 친구 추가 버튼 (검색 결과가 있고 본인이 아닐 때만) */}
-            {searchedUser && searchedUser.userId !== currentUserId && (
+            {/* 친구 추가 버튼 또는 상태 메시지 */}
+            {searchedUser && !searchErrorMessage ? (
               <View style={styles.addFriendSection}>
-                <TouchableOpacity 
-                  style={[
-                    styles.addFriendButton,
-                    addFriendLoading && styles.addFriendButtonDisabled
-                  ]} 
-                  onPress={handleAddFriendToModal} 
-                  disabled={addFriendLoading}
-                >
-                  <Text style={styles.addFriendButtonText}>
-                    {addFriendLoading ? '추가 중...' : '친구 추가하기'}
-                  </Text>
-                </TouchableOpacity>
+                {canAddFriend(searchedUser.userId) ? (
+                  <TouchableOpacity 
+                    style={[
+                      styles.addFriendButton,
+                      addFriendLoading && styles.addFriendButtonDisabled
+                    ]} 
+                    onPress={handleAddFriendToModal} 
+                    disabled={addFriendLoading}
+                  >
+                    <Text style={styles.addFriendButtonText}>
+                      {addFriendLoading ? '추가 중...' : '친구 추가하기'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.friendStatusMessage}>
+                    <Text style={styles.friendStatusText}>
+                      {searchedUser.userId === currentUserId 
+                        ? '본인은 친구로 추가할 수 없습니다.' 
+                        : '이미 친구로 추가된 사용자입니다.'}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
+            ) : null}
+
+            {/* 검색 결과가 없을 때 안내 메시지 */}
+            {!searchedUser && !searchErrorMessage && !searchLoading && searchUserId.trim() !== '' ? (
+              <View style={styles.searchResultSection}>
+                <Text style={styles.searchResultTitle}>검색 결과</Text>
+                <View style={styles.searchResultCard}>
+                  <View style={styles.emptySearchResult}>
+                    <Text style={styles.emptySearchResultText}>사용자를 검색해보세요</Text>
+                    <Text style={styles.emptySearchResultSubText}>사용자 ID를 입력하고 검색 버튼을 눌러주세요</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
           </View>
         </View>
       </Modal>

@@ -143,11 +143,11 @@ export default function HeaderButtons() {
           source={{ uri: `${API_BASE_URL}/images/default/alarm.png` }}
           style={styles.notificationIconImage}
         />
-        {notificationCount > 0 && (
+        {notificationCount > 0 ? (
           <View style={styles.notificationBadge}>
             <Text style={styles.notificationBadgeText}>{notificationCount}</Text>
           </View>
-        )}
+        ) : null}
       </TouchableOpacity>
 
       {/* MyPage 아이콘 */}

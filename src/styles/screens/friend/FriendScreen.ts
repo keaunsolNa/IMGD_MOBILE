@@ -95,6 +95,9 @@ export const styles = StyleSheet.create({
   friendsList: {
     flex: 1,
   },
+  pendingSection: {
+    marginTop: 30,
+  },
   friendCard: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
@@ -113,6 +116,12 @@ export const styles = StyleSheet.create({
   },
   friendCardHeader: {
     marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  friendNameContainer: {
+    flex: 1,
   },
   friendName: {
     fontSize: 18,
@@ -124,6 +133,17 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     fontStyle: 'italic',
+  },
+  pendingStatus: {
+    fontSize: 12,
+    color: '#ff6b35',
+    fontWeight: '600',
+    backgroundColor: '#fff3e0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 10,
+    alignSelf: 'flex-start',
   },
   friendCardContent: {
     flexDirection: 'row',
@@ -332,5 +352,45 @@ export const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#f5c6cb',
+  },
+  searchErrorMessageNotFound: {
+    fontSize: 16,
+    color: '#856404',
+    textAlign: 'center',
+    padding: 15,
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ffeaa7',
+  },
+  friendStatusMessage: {
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#2196f3',
+  },
+  friendStatusText: {
+    fontSize: 14,
+    color: '#1976d2',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  emptySearchResult: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+  },
+  emptySearchResultText: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  emptySearchResultSubText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });
