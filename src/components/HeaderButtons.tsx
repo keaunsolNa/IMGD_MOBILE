@@ -50,18 +50,18 @@ export default function HeaderButtons() {
     }
   }, [currentUserId]);
 
-  // 앱 시작 시 알림 개수 로드
+  // 화면 포커스 시 알림 개수 로드
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadNotificationCount();
+    });
+
+    return unsubscribe;
+  }, [navigation, loadNotificationCount]);
+
+  // 앱 시작 시에도 한 번 로드
   useEffect(() => {
     loadNotificationCount();
-  }, [loadNotificationCount]);
-
-  // 주기적으로 알림 개수 확인 (30초마다)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadNotificationCount();
-    }, 30000); // 30초마다
-
-    return () => clearInterval(interval);
   }, [loadNotificationCount]);
 
   // 친구 요청 목록 로드
@@ -99,7 +99,7 @@ export default function HeaderButtons() {
     }
     
     try {
-      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId);
+      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'F');
       
       // 친구 요청 목록 새로고침
       await loadFriendRequests();
@@ -128,8 +128,34 @@ export default function HeaderButtons() {
   };
 
   // 친구 요청 거절
-  const handleRejectFriendRequest = (friendRequest: UserTableDTO) => {
-    Alert.alert('친구 요청 거절', '친구 요청 거절 기능은 추후 구현 예정입니다.');
+  const handleRejectFriendRequest = async (friendRequest: UserTableDTO) => {
+    if (!currentUserId) {
+      Alert.alert('오류', '사용자 ID를 찾을 수 없습니다.');
+      return;
+    }
+    
+    try {
+      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'R');
+      
+      // 친구 요청 목록 새로고침
+      await loadFriendRequests();
+      // 알림 개수도 새로고침
+      await loadNotificationCount();
+      
+      // 성공 메시지 표시
+      setSuccessMessage(`${friendRequest.name}님의 친구 요청을 거절했습니다.`);
+      setShowSuccessMessage(true);
+      
+      // 2초 후 모달 닫기
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        setShowNotificationModal(false);
+      }, 2000);
+      
+    } catch (error) {
+      console.error('친구 요청 거절 실패:', error);
+      Alert.alert('실패', '친구 요청 거절에 실패했습니다.');
+    }
   };
 
   return (

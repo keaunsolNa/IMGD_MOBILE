@@ -19,6 +19,7 @@ export type UserTableDTO = {
   regDtm: string;
   pictureNm?: string | null;
   pictureId?: number | null;
+  relationship?: string | null;
 };
 
 export type MakeFileDTO = {

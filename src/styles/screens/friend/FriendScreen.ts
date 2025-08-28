@@ -96,7 +96,10 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   pendingSection: {
-    marginTop: 30,
+    marginTop: 20,
+  },
+  rejectedSection: {
+    marginTop: 20,
   },
   friendCard: {
     backgroundColor: '#f8f9fa',
@@ -136,14 +139,13 @@ export const styles = StyleSheet.create({
   },
   pendingStatus: {
     fontSize: 12,
-    color: '#ff6b35',
-    fontWeight: '600',
-    backgroundColor: '#fff3e0',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 10,
-    alignSelf: 'flex-start',
+    color: '#FF6B35',
+    fontWeight: 'bold',
+  },
+  rejectedStatus: {
+    fontSize: 12,
+    color: '#FF4444',
+    fontWeight: 'bold',
   },
   friendCardContent: {
     flexDirection: 'row',
