@@ -37,7 +37,6 @@ export default function GroupUserScreen({ route }: any) {
       const { data } = await UserAPI.findUserById(userId);
       setUser(data);
     } catch (e: any) {
-      console.error('사용자 정보 조회 실패:', e);
       setUser(null);
     } finally {
       setLoading(false);
@@ -98,7 +97,6 @@ export default function GroupUserScreen({ route }: any) {
         showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
       }
     } catch (e: any) {
-      console.error('닉네임 변경 실패:', e);
       showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
     }
   };
@@ -156,7 +154,6 @@ export default function GroupUserScreen({ route }: any) {
       } else {
       }
     } catch (error) {
-      console.error('프로필 이미지 업로드 실패:', error);
       Alert.alert('오류', '프로필 이미지 업로드 중 오류가 발생했습니다.');
     }
   };

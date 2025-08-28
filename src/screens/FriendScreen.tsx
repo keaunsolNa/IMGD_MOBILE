@@ -32,21 +32,18 @@ export default function FriendScreen() {
     
     try {
       setLoading(true);
-      const [friendsResponse, pendingResponse, rejectedResponse, myFriendsResponse] = await Promise.all([
+      const [friendsResponse, pendingResponse, rejectedResponse] = await Promise.all([
         UserAPI.findFriendEachOther(currentUserId),
         UserAPI.findFriendWhoImAddButNot(currentUserId),
-        UserAPI.findFriendWhoImAddButReject(currentUserId),
-        UserAPI.findFriend(currentUserId)
+        UserAPI.findFriendWhoImAddButReject(currentUserId)
       ]);
       
       setFriends(friendsResponse.data || []);
       setPendingFriends(pendingResponse.data || []);
       setRejectedFriends(rejectedResponse.data || []);
-      setMyFriends(myFriendsResponse.data || []);
-    } catch (error) {
-      console.error('친구 목록 로드 실패:', error);
-      Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
-    } finally {
+          } catch (error) {
+        Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
+      } finally {
       setLoading(false);
     }
   }, [currentUserId]);
@@ -95,15 +92,12 @@ export default function FriendScreen() {
       setSearchedUser(null); // 이전 검색 결과 제거
       
       const response = await UserAPI.searchFriend(searchUserId.trim());
-      console.log('searchFriend API 응답:', response);
-      console.log('response.data:', response.data);
       
       const { data } = response;
       
       // 백엔드 응답 검증
       if (!data || typeof data === 'number' || (Array.isArray(data) && data.length === 0)) {
         // 데이터가 없거나 숫자(1)이거나 빈 배열인 경우 - 존재하지 않는 유저
-        console.log('데이터가 없거나 유효하지 않음:', data);
         setSearchedUser(null);
         setSearchErrorMessage('존재하지 않는 아이디입니다');
         
@@ -113,7 +107,6 @@ export default function FriendScreen() {
         }, 3000);
       } else if (data && typeof data === 'object' && data.userId && data.name) {
         // 유효한 사용자 데이터인 경우 (단일 객체)
-        console.log('검색된 사용자 데이터:', data);
         
         // relationship이 'N'이면 친구 추가 가능하도록 설정
         if (data.relationship === 'N') {
@@ -123,7 +116,6 @@ export default function FriendScreen() {
         setSearchedUser(data);
       } else {
         // 예상과 다른 형태의 데이터인 경우
-        console.warn('예상과 다른 형태의 사용자 데이터:', data);
         setSearchedUser(null);
         setSearchErrorMessage('존재하지 않는 아이디입니다');
         
@@ -133,7 +125,6 @@ export default function FriendScreen() {
         }, 3000);
       }
     } catch (error) {
-      console.error('사용자 검색 실패:', error);
       setSearchedUser(null);
       setSearchErrorMessage('존재하지 않는 아이디입니다');
       
@@ -204,7 +195,6 @@ export default function FriendScreen() {
       handleCloseModal();
       loadFriends();
     } catch (error) {
-      console.error('친구 추가 실패:', error);
       Alert.alert('실패', '친구 추가에 실패했습니다.');
     } finally {
       setAddFriendLoading(false);

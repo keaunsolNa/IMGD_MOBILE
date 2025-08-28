@@ -7,24 +7,19 @@ import { getRefreshToken, saveTokens, clearTokens } from './storage';
 import { store } from '@/redux/store';
 import { setAuth } from '@/redux/authSlice';
 
-// --- 1) 백엔드 baseURL 확정 (Nginx를 통한 접근) -------------------------
 function resolveApiBaseUrl(): string {
   const fromExtra = Constants.expoConfig?.extra?.API_BASE_URL as string | undefined;
   if (fromExtra && /^https?:\/\//i.test(fromExtra)) {
     return stripTrailingSlash(fromExtra);
   }
 
-  // 개발 편의: 웹에서 extra가 없으면 현재 오리진 기준으로 Nginx 포트로 매핑
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     const u = new URL(window.location.origin);
-    // 프론트(예: 8081/19006) -> Nginx 포트로 치환
-    u.protocol = 'http:';          // 개발 서버 가정
-    u.port = '80';                 // ✅ Nginx 포트 (기본 80)
+    u.protocol = 'http:';
+    u.port = '80';
     return stripTrailingSlash(u.toString());
   }
 
-  // 네이티브(에뮬레이터/실기기) 기본값 - Nginx를 통한 접근
-  // Android 에뮬레이터: 10.0.2.2, iOS 시뮬레이터: localhost
   if (Platform.OS === 'android') return 'http://10.0.2.2:80';
   return 'http://localhost:80';
 }
@@ -35,22 +30,16 @@ function stripTrailingSlash(s: string) {
 
 export const API_BASE_URL = resolveApiBaseUrl();
 
-// --- 프로필 이미지 URL 생성 함수 (Nginx 정적 파일 서빙용) ----------------
 export const getProfileImageUrl = (pictureUrl: string | null | undefined): any => {
   if (!pictureUrl) {
     return { uri: `${API_BASE_URL}/images/default/user_profile_default.png` };
   }
   
-  // 백엔드에서 반환하는 파일명만 추출 (경로 제거)
   const filename = pictureUrl.split('/').pop() || pictureUrl;
-  
-  // 파일명에 확장자가 없으면 .webp 추가
   const filenameWithExtension = filename.includes('.') ? filename : `${filename}.webp`;
   
   return { uri: `${API_BASE_URL}/images/profile/${filenameWithExtension}` };
 };
-
-// -------------------------------------------------------------------
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -59,7 +48,6 @@ export const api = axios.create({
 });
 
 let isRefreshing = false;
-// NOTE: onRefreshed로 오타 정정
 let queue: Array<(token?: string) => void> = [];
 
 function onRefreshed(token?: string) { queue.forEach(cb => cb(token)); queue = []; }
@@ -90,7 +78,6 @@ api.interceptors.response.use(
       isRefreshing = true;
       try {
         const refreshToken = await getRefreshToken();
-        // 공유 인스턴스(api)를 사용해 Authorization 헤더를 포함시킴
         const { data } = await api.post(
           `/auth/getAccessToken`,
           { refreshToken }
@@ -141,12 +128,6 @@ export const UserAPI = {
     userId: string,
     token?: string
   ) => {
-    console.log('uploadProfileImage 함수 호출됨');
-    console.log('imageAsset:', imageAsset);
-    console.log('userId:', userId);
-    console.log('token:', token ? '있음' : '없음');
-    console.log('API_BASE_URL:', API_BASE_URL);
-    console.log('Platform:', Platform.OS);
     
     try {
       let fileUri;
@@ -154,27 +135,20 @@ export const UserAPI = {
       
       // 웹 환경에서는 FileSystem을 사용하지 않고 직접 이미지 URI 사용
       if (Platform.OS === 'web') {
-        console.log('웹 환경: FileSystem 사용하지 않음');
-        
         // 웹에서 이미지 URI가 data: 형식인 경우 처리
         if (imageAsset.uri.startsWith('data:')) {
-          console.log('data: URI 형식의 이미지 처리');
           fileUri = imageAsset.uri;
         } else {
-          console.log('일반 URI 형식의 이미지 처리');
           fileUri = imageAsset.uri;
         }
       } else {
         // 네이티브 환경에서는 FileSystem 사용
-        console.log('네이티브 환경: FileSystem 사용');
         tempFileUri = `${FileSystem.documentDirectory}temp_profile_${Date.now()}.jpg`;
-        console.log('임시 파일 경로:', tempFileUri);
         
         await FileSystem.copyAsync({
           from: imageAsset.uri,
           to: tempFileUri
         });
-        console.log('임시 파일 생성 완료');
         fileUri = tempFileUri;
       }
 
@@ -192,7 +166,6 @@ export const UserAPI = {
           const blob = await response.blob();
           form.append('originalFile', blob, 'profile.jpg');
         } catch (blobError) {
-          console.error('Blob 변환 실패:', blobError);
           // Blob 변환 실패 시 원본 URI 사용
           form.append('originalFile', {
             uri: fileUri,
@@ -209,9 +182,6 @@ export const UserAPI = {
         } as any);
       }
 
-      console.log('FormData 생성 완료, fetch 요청 시작');
-      console.log('요청 URL:', `${API_BASE_URL}/api/file/makeUserProfileImg`);
-      
       const response = await fetch(`${API_BASE_URL}/api/file/makeUserProfileImg`, {
         method: 'POST',
         credentials: 'include',
@@ -219,52 +189,40 @@ export const UserAPI = {
         body: form
       });
 
-      console.log('fetch 응답 상태:', response.status);
-      console.log('fetch 응답 헤더:', response.headers);
-
       // 네이티브 환경에서만 임시 파일 삭제
       if (Platform.OS !== 'web' && tempFileUri) {
         try {
           await FileSystem.deleteAsync(tempFileUri);
-          console.log('임시 파일 삭제 완료');
         } catch (deleteError) {
-          console.error('임시 파일 삭제 실패:', deleteError);
+          // 임시 파일 삭제 실패
         }
       }
 
       // 응답 처리 개선 - 백엔드에서 DTO를 직접 반환하는 경우
       if (response.ok) {
         const contentType = response.headers.get('content-type');
-        console.log('응답 Content-Type:', contentType);
         
         if (contentType && contentType.includes('application/json')) {
           const responseData = await response.json();
-          console.log('응답 데이터:', responseData);
           
           // 백엔드에서 DTO를 직접 반환하는 경우 (userId, groupId, fileId 등이 있는 경우)
           if (responseData && (responseData.userId || responseData.groupId || responseData.fileId || responseData.success === true)) {
-            console.log('DTO 응답으로 처리:', responseData);
             return responseData;
           } else if (responseData && responseData.success === false) {
             // 실패 응답인 경우
-            console.log('실패 응답으로 처리:', responseData);
             return responseData;
           } else {
             // 기존 ResponseEntity 형태인 경우
-            console.log('ResponseEntity 형태로 처리');
             return { success: true, message: '프로필 이미지 업로드 성공' };
           }
         } else {
           // 빈 응답인 경우 성공으로 처리
-          console.log('빈 응답 수신, 성공으로 처리');
           return { success: true, message: '프로필 이미지 업로드 성공' };
         }
       } else {
-        console.error('HTTP 에러:', response.status, response.statusText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      console.error('프로필 이미지 업로드 중 오류:', error);
       throw error;
     }
   }

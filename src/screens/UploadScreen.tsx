@@ -41,7 +41,6 @@ export default function UploadScreen() {
                 alert('업로드에 실패했습니다.');
             }
         } catch (error: any) {
-            console.error('파일 업로드 실패:', error);
             alert('업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
         }
     };

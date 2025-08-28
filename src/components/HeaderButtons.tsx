@@ -31,7 +31,7 @@ export default function HeaderButtons() {
         const { data } = await UserAPI.findUserByToken();
         setUserProfile(data);
       } catch (error) {
-        console.error('사용자 프로필 로드 실패:', error);
+        // 사용자 프로필 로드 실패
       }
     };
 
@@ -46,7 +46,7 @@ export default function HeaderButtons() {
       const { data } = await UserAPI.findFriendWhoAddMeButImNot(currentUserId);
       setNotificationCount(data?.length || 0);
     } catch (error) {
-      console.error('알림 개수 로드 실패:', error);
+      // 알림 개수 로드 실패
     }
   }, [currentUserId]);
 
@@ -74,7 +74,7 @@ export default function HeaderButtons() {
       setFriendRequests(data || []);
       setNotificationCount(data?.length || 0);
     } catch (error) {
-      console.error('친구 요청 목록 로드 실패:', error);
+      // 친구 요청 목록 로드 실패
     } finally {
       setLoadingNotifications(false);
     }
@@ -99,7 +99,7 @@ export default function HeaderButtons() {
     }
     
     try {
-      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'F');
+      await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'F');
       
       // 친구 요청 목록 새로고침
       await loadFriendRequests();
@@ -117,12 +117,11 @@ export default function HeaderButtons() {
         try {
           (navigation as any).navigate('Friend', { refresh: true });
         } catch (navError) {
-          console.error('화면 이동 실패:', navError);
+          // 화면 이동 실패
         }
       }, 2000);
       
     } catch (error) {
-      console.error('친구 요청 수락 실패:', error);
       Alert.alert('실패', '친구 요청 수락에 실패했습니다.');
     }
   };
@@ -135,7 +134,7 @@ export default function HeaderButtons() {
     }
     
     try {
-      const response = await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'R');
+      await UserAPI.insertUserFriendTable(currentUserId, friendRequest.userId, 'R');
       
       // 친구 요청 목록 새로고침
       await loadFriendRequests();
@@ -153,7 +152,6 @@ export default function HeaderButtons() {
       }, 2000);
       
     } catch (error) {
-      console.error('친구 요청 거절 실패:', error);
       Alert.alert('실패', '친구 요청 거절에 실패했습니다.');
     }
   };

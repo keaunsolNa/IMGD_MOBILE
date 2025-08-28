@@ -40,7 +40,7 @@ export default function GroupScreen({ navigation }: any) {
       const { data } = await GroupAPI.findGroupWhatInside(subject);
       setGroups(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      console.error('그룹 목록 조회 실패:', e);
+      // 그룹 목록 조회 실패
     }
   }, [subject]);
 
@@ -75,7 +75,6 @@ export default function GroupScreen({ navigation }: any) {
           const users = Array.isArray(data) ? data : [];
           setGroupUsers(new Map(groupUsers.set(groupId, users)));
         } catch (e: any) {
-          console.error('그룹 유저 목록 조회 실패:', e);
           // 에러 발생 시 빈 배열로 설정
           setGroupUsers(new Map(groupUsers.set(groupId, [])));
         }
@@ -100,7 +99,6 @@ export default function GroupScreen({ navigation }: any) {
       const { data } = await UserAPI.findFriendEachOtherAndNotInGroup(subject, groupId);
       setAvailableFriends(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('그룹에 추가 가능한 친구 목록 조회 실패:', error);
       Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
       setAvailableFriends([]);
     } finally {
@@ -162,7 +160,7 @@ export default function GroupScreen({ navigation }: any) {
                   const users = Array.isArray(data) ? data : [];
                   setGroupUsers(new Map(groupUsers.set(selectedGroupId, users)));
                 } catch (error) {
-                  console.error('그룹 유저 목록 새로고침 실패:', error);
+                  // 그룹 유저 목록 새로고침 실패
                 }
               }
             }
@@ -170,7 +168,6 @@ export default function GroupScreen({ navigation }: any) {
         ]
       );
     } catch (error) {
-      console.error('그룹에 친구 추가 실패:', error);
       Alert.alert('그룹원 추가 실패', '그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
       
       // 에러 발생 시 로딩 상태 해제

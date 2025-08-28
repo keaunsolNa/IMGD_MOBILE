@@ -64,7 +64,6 @@ export default function MakeGroupRootFolderScreen({ navigation }: any) {
         alert('그룹 루트 폴더 생성에 실패했습니다.');
       }
     } catch (error: any) {
-      console.error('그룹 루트 폴더 생성 실패:', error);
       alert('그룹 루트 폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
     }
   };
