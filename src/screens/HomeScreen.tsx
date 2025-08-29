@@ -13,7 +13,7 @@ export default function HomeScreen({ navigation }: any) {
           <Button title="Group" onPress={() => navigation.navigate('Groups')} />
         </View>
         <View style={styles.buttonContainer}>
-          <Button title="Upload" onPress={() => navigation.navigate('Upload')} />
+          <Button title="File" onPress={() => navigation.navigate('File')} />
         </View>
         <View style={styles.buttonContainer}>
           <Button title="Friend" onPress={() => navigation.navigate('Friend')} />

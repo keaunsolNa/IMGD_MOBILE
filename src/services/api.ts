@@ -230,9 +230,11 @@ export const UserAPI = {
 
 export const FileAPI = {
   makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/api/file/makeGroupDir`, dto),
+  findFileAndDirectory: (parentId: number, groupId: number) => api.get(`/api/file/findFileAndDirectory`, { params: { parentId, groupId } }),
+  makeDir: (dto: { userId: string; parentId: number; dirNm: string; groupId: number; path: string }) => api.post(`/api/file/makeDir`, dto),
 
-  // 파일 생성: multipart/form-data로 /api/file/makeFile 호출
-  uploadBinary: async (
+  // 파일 업로드: multipart/form-data로 /api/file/makeFile 호출
+  makeFile: async (
     uri: string,
     params: { folderId: number|string; userId: string; groupId: number|string; fileName?: string },
     token?: string
@@ -243,11 +245,30 @@ export const FileAPI = {
     form.append('groupId', String(params.groupId));
     const fileName = params.fileName ?? 'upload.jpg';
     form.append('fileName', fileName);
-    form.append('originalFile', {
-      uri,
-      type: 'image/jpeg',
-      name: fileName
-    } as any);
+    
+    // 웹과 네이티브 환경에 따라 파일 처리 방식 다름
+    if (Platform.OS === 'web') {
+      // 웹에서는 Blob으로 변환
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        form.append('originalFile', blob, fileName);
+      } catch (blobError) {
+        // Blob 변환 실패 시 원본 URI 사용
+        form.append('originalFile', {
+          uri,
+          type: 'image/jpeg',
+          name: fileName
+        } as any);
+      }
+    } else {
+      // 네이티브에서는 파일 경로 사용
+      form.append('originalFile', {
+        uri,
+        type: 'image/jpeg',
+        name: fileName
+      } as any);
+    }
 
     return fetch(`${API_BASE_URL}/api/file/makeFile`, {
       method: 'POST',

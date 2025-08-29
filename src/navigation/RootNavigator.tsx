@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
 import GroupScreen from '../screens/group/GroupScreen';
-import UploadScreen from '../screens/UploadScreen';
+import FileScreen from '../screens/FileScreen';
 import MakeGroupScreen from '../screens/group/MakeGroupScreen';
 import MakeGroupRootFolderScreen from '../screens/group/MakeGroupRootFolderScreen';
 import GroupUserScreen from '../screens/group/GroupUserScreen';
@@ -33,7 +33,7 @@ export default function RootNavigator() {
                         <Stack.Screen name="MakeGroup" component={MakeGroupScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MakeGroupRootFolder" component={MakeGroupRootFolderScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="GroupUser" component={GroupUserScreen} options={{ title: 'IMGD' }} />
-                        <Stack.Screen name="Upload" component={UploadScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="File" component={FileScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MyPage" component={MyPageScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Friend" component={FriendScreen} options={{ title: 'IMGD' }} />
                     </>
