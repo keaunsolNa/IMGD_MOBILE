@@ -6,7 +6,7 @@ import HomeScreen from '../screens/HomeScreen';
 import GroupScreen from '../screens/group/GroupScreen';
 import FileScreen from '../screens/FileScreen';
 import MakeGroupScreen from '../screens/group/MakeGroupScreen';
-import MakeGroupRootFolderScreen from '../screens/group/MakeGroupRootFolderScreen';
+
 import GroupUserScreen from '../screens/group/GroupUserScreen';
 import MyPageScreen from '../screens/MyPageScreen';
 import FriendScreen from '../screens/FriendScreen';
@@ -31,7 +31,6 @@ export default function RootNavigator() {
                         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Groups" component={GroupScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MakeGroup" component={MakeGroupScreen} options={{ title: 'IMGD' }} />
-                        <Stack.Screen name="MakeGroupRootFolder" component={MakeGroupRootFolderScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="GroupUser" component={GroupUserScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="File" component={FileScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MyPage" component={MyPageScreen} options={{ title: 'IMGD' }} />

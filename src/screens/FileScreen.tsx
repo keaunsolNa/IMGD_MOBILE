@@ -185,26 +185,43 @@ export default function FileScreen() {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        const selectedImage = result.assets[0];
-        
-        // 파일 크기 확인 (50MB 제한)
-        if (selectedImage.fileSize && selectedImage.fileSize > 50 * 1024 * 1024) {
-          Alert.alert('파일 크기 초과', '파일 크기는 50MB를 초과할 수 없습니다.');
-          return;
-        }
+             if (!result.canceled && result.assets[0]) {
+         const selectedImage = result.assets[0];
+         
+         // 파일 크기 정보 가져오기
+         let fileSize = selectedImage.fileSize;
+         
+         // fileSize가 없으면 파일 정보에서 크기 추출 시도
+         if (!fileSize && selectedImage.uri) {
+           try {
+             // 파일 크기 확인 (50MB 제한)
+             if (fileSize && fileSize > 50 * 1024 * 1024) {
+               Alert.alert('파일 크기 초과', '파일 크기는 50MB를 초과할 수 없습니다.');
+               return;
+             }
+           } catch (error) {
+             console.log('파일 크기 확인 실패:', error);
+           }
+         }
 
-        // 파일 확장자 확인 (.jpg, .png만 허용)
-        const fileName = selectedImage.fileName || selectedImage.uri.split('/').pop() || '';
-        const fileExtension = fileName.toLowerCase().split('.').pop() || '';
-        
-        if (!fileExtension || !['jpg', 'jpeg', 'png'].includes(fileExtension)) {
-          Alert.alert('지원하지 않는 파일 형식', 'JPG, PNG 파일만 업로드할 수 있습니다.');
-          return;
-        }
+         // 파일 확장자 확인 (.jpg, .png만 허용)
+         const fileName = selectedImage.fileName || selectedImage.uri.split('/').pop() || '';
+         const fileExtension = fileName.toLowerCase().split('.').pop() || '';
+         
+         if (!fileExtension || !['jpg', 'jpeg', 'png'].includes(fileExtension)) {
+           Alert.alert('지원하지 않는 파일 형식', 'JPG, PNG 파일만 업로드할 수 있습니다.');
+           return;
+         }
 
-        setSelectedFile(selectedImage);
-      }
+         // 파일 크기 정보가 포함된 객체 생성
+         const fileInfo = {
+           ...selectedImage,
+           fileSize: fileSize || 0, // 크기를 알 수 없는 경우 0으로 설정
+           displaySize: fileSize ? `${(fileSize / 1024 / 1024).toFixed(2)} MB` : '크기 확인 불가'
+         };
+
+         setSelectedFile(fileInfo);
+       }
     } catch (error) {
       console.error('파일 선택 실패:', error);
       Alert.alert('오류', '파일을 선택할 수 없습니다.');
@@ -435,13 +452,10 @@ export default function FileScreen() {
                  <Text style={styles.selectFileButtonText}>📁 파일 선택</Text>
                </TouchableOpacity>
              ) : (
-               <View style={styles.selectedFileInfo}>
-                 <Text style={styles.selectedFileName}>선택된 파일: {selectedFile.fileName || '알 수 없는 파일'}</Text>
-                 <Text style={styles.selectedFileSize}>
-                   크기: {selectedFile.fileSize ? `${(selectedFile.fileSize / 1024 / 1024).toFixed(2)} MB` : '알 수 없음'}
-                 </Text>
-                 
-                 <View style={styles.fileActionButtons}>
+                               <View style={styles.selectedFileInfo}>
+                  <Text style={styles.selectedFileName}>선택된 파일: {selectedFile.fileName || '알 수 없는 파일'}</Text>
+                  
+                  <View style={styles.fileActionButtons}>
                    <TouchableOpacity 
                      style={styles.changeFileButton}
                      onPress={handleSelectFile}

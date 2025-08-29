@@ -187,8 +187,6 @@ export default function GroupScreen({ navigation }: any) {
       <View style={styles.sidebar}>
         <Text style={styles.sidebarTitle}>Menus</Text>
         <Button title="Make New Group" onPress={() => navigation.navigate('MakeGroup')} />
-        <View style={styles.spacing} />
-        <Button title="Make Group Root Folder" onPress={() => navigation.navigate('MakeGroupRootFolder')} />
       </View>
 
       {/* Main Content */}
