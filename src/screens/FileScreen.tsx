@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Image } from 'react-native';
 import { styles } from '@/styles/screens/file/FileScreen';
-import { GroupAPI, FileAPI } from '@/services/api';
+import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
@@ -46,6 +46,11 @@ export default function FileScreen() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
+  
+  // 이미지 뷰어 관련 상태
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<FileTableDTO | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const subject = getSubjectFromToken(accessToken);
 
@@ -136,6 +141,29 @@ export default function FileScreen() {
       // 상위 디렉터리 이름으로 업데이트
       setCurrentDirectoryName(newStack.length > 0 ? newStack[newStack.length - 1].name : selectedGroup.groupNm);
       loadFilesAndDirectories(selectedGroup.groupId, parent.id);
+    }
+  };
+
+  // 파일 클릭 시 이미지 뷰어 열기
+  const handleFileClick = async (file: FileTableDTO) => {
+    if (file.type === 'FILE' && file.fileId) {
+      setSelectedImageFile(file);
+      setShowImageViewer(true);
+      setImageLoading(true);
+      
+      try {
+        // 파일 정보 조회
+        const response = await FileAPI.findFileById(file.fileId);
+        if (response && response.data) {
+          // 파일 정보 업데이트 (필요한 경우)
+          setSelectedImageFile(response.data);
+        }
+      } catch (error) {
+        console.error('파일 정보 조회 실패:', error);
+        Alert.alert('오류', '파일 정보를 불러올 수 없습니다.');
+      } finally {
+        setImageLoading(false);
+      }
     }
   };
 
@@ -319,6 +347,65 @@ export default function FileScreen() {
      </>
    );
 
+   // 이미지 뷰어 모달
+   const renderImageViewerModal = () => (
+     <Modal
+       visible={showImageViewer}
+       transparent={true}
+       animationType="fade"
+       onRequestClose={() => setShowImageViewer(false)}
+     >
+       <View style={styles.imageViewerOverlay}>
+         <View style={styles.imageViewerContent}>
+           <View style={styles.imageViewerHeader}>
+             <Text style={styles.imageViewerTitle}>
+               {selectedImageFile?.fileOrgNm || '이미지 뷰어'}
+             </Text>
+             <TouchableOpacity 
+               onPress={() => setShowImageViewer(false)}
+               style={styles.imageViewerCloseButton}
+             >
+               <Text style={styles.imageViewerCloseButtonText}>✕</Text>
+             </TouchableOpacity>
+           </View>
+           
+           <View style={styles.imageViewerBody}>
+             {imageLoading ? (
+               <View style={styles.imageLoadingContainer}>
+                 <Text style={styles.imageLoadingText}>이미지를 불러오는 중...</Text>
+               </View>
+             ) : selectedImageFile ? (
+                               <View style={styles.imageContainer}>
+                  <Text style={styles.imageFileName}>{selectedImageFile.fileOrgNm}</Text>
+                  <Text style={styles.imageFileInfo}>
+                    생성일: {selectedImageFile.regDtm}
+                  </Text>
+                  <View style={styles.imageContainer}>
+                                         <Image
+                       source={{ uri: `${API_BASE_URL}/GROUP_IMG/${selectedImageFile.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
+                       style={styles.imagePreview}
+                       resizeMode="contain"
+                       onError={() => {
+                         // 이미지 로드 실패 시 플레이스홀더 표시
+                         setImageLoading(false);
+                       }}
+                       onLoad={() => {
+                         setImageLoading(false);
+                       }}
+                     />
+                  </View>
+                </View>
+             ) : (
+               <View style={styles.imageErrorContainer}>
+                 <Text style={styles.imageErrorText}>이미지를 불러올 수 없습니다.</Text>
+               </View>
+             )}
+           </View>
+         </View>
+       </View>
+     </Modal>
+   );
+
    // 파일 업로드 모달
    const renderUploadModal = () => (
      <Modal
@@ -467,18 +554,29 @@ export default function FileScreen() {
           </View>
         ) : (
           filesAndDirectories.map((item, idx) => (
-            <TouchableOpacity 
-              key={idx} 
-              style={styles.fileCard}
-              onPress={() => item.type === 'DIR' ? handleDirectoryClick(item) : null}
-              disabled={item.type !== 'DIR'}
-            >
-              <View style={styles.fileHeader}>
-                <View style={item.type === 'DIR' ? styles.directoryIcon : styles.fileIcon}>
-                  <Text style={styles.fileIconText}>
-                    {item.type === 'DIR' ? '📁' : '🖼️'}
-                  </Text>
-                </View>
+                         <TouchableOpacity 
+               key={idx} 
+               style={styles.fileCard}
+               onPress={() => item.type === 'DIR' ? handleDirectoryClick(item) : handleFileClick(item)}
+               disabled={false}
+             >
+                             <View style={styles.fileHeader}>
+                 {item.type === 'DIR' ? (
+                   <View style={styles.directoryIcon}>
+                     <Text style={styles.fileIconText}>📁</Text>
+                   </View>
+                 ) : (
+                   <View style={styles.fileIcon}>
+                     <Image
+                       source={{ uri: `${API_BASE_URL}/GROUP_IMG/${item.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
+                       style={styles.fileThumbnail}
+                       resizeMode="cover"
+                       onError={() => {
+                         // 이미지 로드 실패 시 기본 아이콘 표시
+                       }}
+                     />
+                   </View>
+                 )}
                                  <View style={styles.fileMainInfo}>
                    <Text style={styles.fileName}>
                      {item.type === 'DIR' ? item.fileNm : item.fileOrgNm}
@@ -509,6 +607,7 @@ export default function FileScreen() {
      <View style={styles.container}>
        {viewMode === 'groups' ? renderGroupsView() : renderFilesView()}
        {renderUploadModal()}
+       {renderImageViewerModal()}
      </View>
    );
 }

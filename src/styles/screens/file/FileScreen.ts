@@ -430,4 +430,121 @@ export const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+
+  // 이미지 뷰어 관련 스타일
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    width: '90%',
+    maxWidth: 500,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  imageViewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  imageViewerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  imageViewerCloseButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  imageViewerCloseButtonText: {
+    fontSize: 18,
+    color: '#6b7280',
+    fontWeight: '600',
+  },
+  imageViewerBody: {
+    alignItems: 'center',
+  },
+  imageLoadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  imageLoadingText: {
+    fontSize: 16,
+    color: '#6b7280',
+  },
+  imageContainer: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  imageFileName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  imageFileInfo: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  imagePlaceholder: {
+    marginTop: 24,
+    padding: 40,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#e5e7eb',
+    borderStyle: 'dashed',
+  },
+  imagePlaceholderText: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  imagePlaceholderSubtext: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  imageErrorContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  imageErrorText: {
+    fontSize: 16,
+    color: '#ef4444',
+    textAlign: 'center',
+  },
+  imagePreview: {
+    width: 300,
+    height: 300,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  fileThumbnail: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#f1f5f9',
+  },
 });

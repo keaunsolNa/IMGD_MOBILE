@@ -276,5 +276,8 @@ export const FileAPI = {
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       body: form
     }).then(r => r.json());
-  }
+  },
+
+  // 파일 ID로 파일 정보 조회
+  findFileById: (fileId: number) => api.get(`/api/file/findFileById`, { params: { fileId } }),
 };
