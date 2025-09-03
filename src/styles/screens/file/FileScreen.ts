@@ -181,6 +181,13 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#f1f5f9',
   },
+  fileCardContent: {
+    flex: 1,
+    position: 'relative',
+  },
+  fileClickableArea: {
+    flex: 1,
+  },
   fileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -210,11 +217,18 @@ export const styles = StyleSheet.create({
   fileMainInfo: {
     flex: 1,
   },
+  fileNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   fileName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   fileType: {
     fontSize: 12,
@@ -546,5 +560,28 @@ export const styles = StyleSheet.create({
     height: 40,
     borderRadius: 10,
     backgroundColor: '#f1f5f9',
+  },
+  deleteButtonContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#dc2626',
+  },
+  deleteButtonText: {
+    fontSize: 16,
+    color: 'white',
+    fontWeight: '600',
   },
 });

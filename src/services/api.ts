@@ -280,4 +280,7 @@ export const FileAPI = {
 
   // 파일 ID로 파일 정보 조회
   findFileById: (fileId: number) => api.get(`/api/file/findFileById`, { params: { fileId } }),
+
+  // 파일 삭제
+  deleteFile: (fileId: number) => api.delete(`/api/file/deleteFile`, { params: { fileId } }),
 };

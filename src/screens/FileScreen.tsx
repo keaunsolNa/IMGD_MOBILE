@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Image, Pressable } from 'react-native';
 import { styles } from '@/styles/screens/file/FileScreen';
 import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
@@ -164,6 +164,102 @@ export default function FileScreen() {
       } finally {
         setImageLoading(false);
       }
+    }
+  };
+
+  // 파일 삭제
+  const handleDeleteFile = async (file: FileTableDTO) => {
+    if (!file.fileId || !selectedGroup?.groupId) {
+      return;
+    }
+    
+    // 웹 환경에서는 window.confirm 사용
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm(`"${file.fileOrgNm}" 파일을 삭제하시겠습니까?`);
+      if (confirmed) {
+        try {
+          const response = await FileAPI.deleteFile(file.fileId!);
+          
+          if (response && response.data) {
+            window.alert('파일이 삭제되었습니다.');
+            
+            // 삭제된 파일의 parentId로 이동
+            const parentId = response.data.parentId;
+            if (parentId) {
+              setCurrentParentId(parentId);
+              // 디렉터리 스택을 parentId에 맞게 조정
+              if (parentId === 2) {
+                // 루트 디렉터리로 이동
+                setDirectoryStack([]);
+                setCurrentDirectoryName(selectedGroup.groupNm);
+              } else {
+                // 상위 디렉터리로 이동
+                const newStack = directoryStack.slice(0, -1);
+                setDirectoryStack(newStack);
+                setCurrentDirectoryName(newStack.length > 0 ? newStack[newStack.length - 1].name : selectedGroup.groupNm);
+              }
+              
+              // 파일 목록 새로고침
+              await loadFilesAndDirectories(selectedGroup.groupId, parentId);
+            }
+          } else {
+            window.alert('파일 삭제에 실패했습니다.');
+          }
+        } catch (error: any) {
+          console.error('파일 삭제 실패:', error);
+          window.alert('파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+        }
+      }
+    } else {
+      // 네이티브 환경에서는 Alert.alert 사용
+      Alert.alert(
+        '파일 삭제',
+        `"${file.fileOrgNm}" 파일을 삭제하시겠습니까?`,
+        [
+          {
+            text: '취소',
+            style: 'cancel'
+          },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const response = await FileAPI.deleteFile(file.fileId!);
+                
+                if (response && response.data) {
+                  Alert.alert('성공', '파일이 삭제되었습니다.');
+                  
+                  // 삭제된 파일의 parentId로 이동
+                  const parentId = response.data.parentId;
+                  if (parentId) {
+                    setCurrentParentId(parentId);
+                    // 디렉터리 스택을 parentId에 맞게 조정
+                    if (parentId === 2) {
+                      // 루트 디렉터리로 이동
+                      setDirectoryStack([]);
+                      setCurrentDirectoryName(selectedGroup.groupNm);
+                    } else {
+                      // 상위 디렉터리로 이동
+                      const newStack = directoryStack.slice(0, -1);
+                      setDirectoryStack(newStack);
+                      setCurrentDirectoryName(newStack.length > 0 ? newStack[newStack.length - 1].name : selectedGroup.groupNm);
+                    }
+                    
+                    // 파일 목록 새로고침
+                    await loadFilesAndDirectories(selectedGroup.groupId!, parentId);
+                  }
+                } else {
+                  Alert.alert('오류', '파일 삭제에 실패했습니다.');
+                }
+              } catch (error: any) {
+                console.error('파일 삭제 실패:', error);
+                Alert.alert('오류', '파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+              }
+            }
+          }
+        ]
+      );
     }
   };
 
@@ -568,49 +664,60 @@ export default function FileScreen() {
           </View>
         ) : (
           filesAndDirectories.map((item, idx) => (
-                         <TouchableOpacity 
-               key={idx} 
-               style={styles.fileCard}
-               onPress={() => item.type === 'DIR' ? handleDirectoryClick(item) : handleFileClick(item)}
-               disabled={false}
-             >
-                             <View style={styles.fileHeader}>
-                 {item.type === 'DIR' ? (
-                   <View style={styles.directoryIcon}>
-                     <Text style={styles.fileIconText}>📁</Text>
-                   </View>
-                 ) : (
-                   <View style={styles.fileIcon}>
-                     <Image
-                       source={{ uri: `${API_BASE_URL}/GROUP_IMG/${item.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
-                       style={styles.fileThumbnail}
-                       resizeMode="cover"
-                       onError={() => {
-                         // 이미지 로드 실패 시 기본 아이콘 표시
-                       }}
-                     />
-                   </View>
-                 )}
-                                 <View style={styles.fileMainInfo}>
-                   <Text style={styles.fileName}>
-                     {item.type === 'DIR' ? item.fileNm : item.fileOrgNm}
-                   </Text>
-                   <Text style={styles.fileType}>
-                     {item.type === 'DIR' ? '디렉토리 (탭하여 열기)' : '이미지 파일'}
-                   </Text>
-                 </View>
+            <View key={idx} style={styles.fileCard}>
+              <View style={styles.fileCardContent}>
+                <TouchableOpacity 
+                  style={styles.fileClickableArea}
+                  onPress={() => item.type === 'DIR' ? handleDirectoryClick(item) : handleFileClick(item)}
+                  disabled={false}
+                >
+                  <View style={styles.fileHeader}>
+                    {item.type === 'DIR' ? (
+                      <View style={styles.directoryIcon}>
+                        <Text style={styles.fileIconText}>📁</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.fileIcon}>
+                        <Image
+                          source={{ uri: `${API_BASE_URL}/GROUP_IMG/${item.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
+                          style={styles.fileThumbnail}
+                          resizeMode="cover"
+                          onError={() => {
+                            // 이미지 로드 실패 시 기본 아이콘 표시
+                          }}
+                        />
+                      </View>
+                    )}
+                    <View style={styles.fileMainInfo}>
+                      <View style={styles.fileNameRow}>
+                        <Text style={styles.fileName}>
+                          {item.type === 'DIR' ? item.fileNm : item.fileOrgNm}
+                        </Text>
+                      </View>
+                      <Text style={styles.fileType}>
+                        {item.type === 'DIR' ? '디렉토리 (탭하여 열기)' : '이미지 파일'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.fileDetails}>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.detailLabel}>생성일</Text>
+                      <Text style={styles.detailValue}>{item.regDtm}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+                {item.type === 'FILE' && (
+                  <View style={styles.deleteButtonContainer}>
+                    <Pressable 
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteFile(item)}
+                    >
+                      <Text style={styles.deleteButtonText}>🗑️</Text>
+                    </Pressable>
+                  </View>
+                )}
               </View>
-              <View style={styles.fileDetails}>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>경로</Text>
-                  <Text style={styles.detailValue}>{item.filePath}</Text>
-                </View>
-                <View style={styles.detailItem}>
-                  <Text style={styles.detailLabel}>생성일</Text>
-                  <Text style={styles.detailValue}>{item.regDtm}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
+            </View>
           ))
         )}
       </ScrollView>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Button, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator, Alert, TouchableOpacity, Text } from 'react-native';
 import { loginWith } from '@/services/authClient';
 import { styles } from '@/styles/screens/login/LoginScreen';
 
@@ -21,7 +21,15 @@ export default function LoginScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.buttonContainer}>
-        <Button title="SIGN IN WITH GOOGLE" onPress={onGoogle} disabled={loading} />
+        <TouchableOpacity 
+          style={[styles.googleButton, loading && styles.googleButtonDisabled]} 
+          onPress={onGoogle} 
+          disabled={loading}
+        >
+          <Text style={styles.googleButtonText}>
+            {loading ? '로그인 중...' : 'SIGN IN WITH GOOGLE'}
+          </Text>
+        </TouchableOpacity>
       </View>
       {loading && (
         <View style={styles.loadingContainer}>
