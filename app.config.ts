@@ -7,7 +7,9 @@ const config: ExpoConfig = {
     scheme: 'imgd', // deep link: imgd://
     extra: {
         API_BASE_URL: process.env.API_BASE_URL,
-        AUTH_REDIRECT_SCHEME: 'imgd'
+        API_DOMAIN: process.env.API_DOMAIN,
+        API_LOCAL: process.env.API_LOCAL,
+        AUTH_REDIRECT_SCHEME: process.env.AUTH_REDIRECT_SCHEME
     },
     web: {
         bundler: 'metro',

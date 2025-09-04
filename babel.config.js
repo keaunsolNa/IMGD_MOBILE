@@ -3,8 +3,7 @@ export default function (api) {
     return {
         presets: ["babel-preset-expo"],
         plugins: [
-            // Reanimated 사용 시 마지막에 유지
-            "react-native-worklets/plugin"
+            // Reanimated 플러그인 제거 - worklets 오류 방지
         ]
     };
 };

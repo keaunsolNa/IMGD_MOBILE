@@ -50,12 +50,12 @@ export async function loginWith(provider: Provider) {
     // 🔧 웹은 프론트 기준으로 항상 강제 세팅(포트/경로가 정확히 일치해야 함)
     if (Platform.OS === 'web') {
       u.searchParams.set('redirect_uri', returnUrl);
-    } else {
-      // 네이티브는 없으면 넣고, 있으면 서버 설정 유지(환경 따라 선택)
-      if (!u.searchParams.has('redirect_uri')) {
-        u.searchParams.set('redirect_uri', returnUrl);
+          } else {
+        // 네이티브는 없으면 넣고, 있으면 서버 설정 유지(환경 따라 선택)
+        if (!u.searchParams.has('redirect_uri')) {
+          u.searchParams.set('redirect_uri', returnUrl);
+        }
       }
-    }
 
     authUrl = u.toString();
 
@@ -85,11 +85,13 @@ export async function loginWith(provider: Provider) {
 
     // 6) 백엔드로 교환 요청 (필요 시 redirectUri도 함께 전달)
     const cb = await api.post<{ redirectUrl: string; accessToken?: string }>(
-      `/auth/login/GOOGLE/callback`,
+      `/auth/login/${provider}/callback`,
       { authorizationCode: code, redirectUri: returnUrl }   // ← 반드시 포함
     );
 
-    if (cb.data?.accessToken) await setAccessToken(cb.data.accessToken);
+    if (cb.data?.accessToken) {
+      await setAccessToken(cb.data.accessToken);
+    }
     return cb.data;
   } catch (error) {
     console.error('OAuth 로그인 에러:', error);

@@ -20,7 +20,7 @@ function resolveApiBaseUrl(): string {
     return stripTrailingSlash(u.toString());
   }
 
-  if (Platform.OS === 'android') return 'http://10.0.2.2:80';
+  if (Platform.OS === 'android') return 'http://192.168.35.252:80';
   return 'http://localhost:80';
 }
 

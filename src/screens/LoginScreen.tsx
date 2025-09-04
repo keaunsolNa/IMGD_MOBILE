@@ -18,6 +18,18 @@ export default function LoginScreen() {
     }
   };
 
+  const onKakao = async () => {
+    try {
+      setLoading(true);
+      await loginWith('KAKAO');
+      // ✅ 토큰 저장 시 Redux 동기화 → RootNavigator가 자동으로 전환
+    } catch (e: any) {
+      Alert.alert('로그인 실패', e.message ?? '알 수 없는 오류');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.buttonContainer}>
@@ -28,6 +40,16 @@ export default function LoginScreen() {
         >
           <Text style={styles.googleButtonText}>
             {loading ? '로그인 중...' : 'SIGN IN WITH GOOGLE'}
+          </Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.kakaoButton, loading && styles.kakaoButtonDisabled]} 
+          onPress={onKakao} 
+          disabled={loading}
+        >
+          <Text style={styles.kakaoButtonText}>
+            {loading ? '로그인 중...' : '카카오로 로그인'}
           </Text>
         </TouchableOpacity>
       </View>
