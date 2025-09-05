@@ -22,13 +22,13 @@ export const styles = StyleSheet.create({
   content: {
     flex: 1,
     flexDirection: 'row',
-    gap: 20,
+    gap: 15,
   },
   sidebar: {
-    width: 150,
+    width: 120,
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 15,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -61,7 +61,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'white',
     borderRadius: 10,
-    padding: 20,
+    padding: 15,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -70,6 +70,9 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  mainScrollView: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
@@ -92,20 +95,26 @@ export const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
+  emptySpace: {
+    height: 20,
+  },
   friendsList: {
-    flex: 1,
+    marginBottom: 10,
+  },
+  friendRequestSection: {
+    marginTop: 15,
   },
   pendingSection: {
-    marginTop: 20,
+    marginTop: 15,
   },
   rejectedSection: {
-    marginTop: 20,
+    marginTop: 15,
   },
   friendCard: {
     backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#007AFF',
     shadowColor: '#000',
@@ -116,9 +125,13 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
+    position: 'relative',
+  },
+  friendCardTouchable: {
+    flex: 1,
   },
   friendCardHeader: {
-    marginBottom: 12,
+    marginBottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -137,6 +150,11 @@ export const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
+  friendRequestStatus: {
+    fontSize: 12,
+    color: '#007AFF',
+    fontWeight: 'bold',
+  },
   pendingStatus: {
     fontSize: 12,
     color: '#FF6B35',
@@ -152,10 +170,10 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   friendProfileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 15,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    marginRight: 12,
   },
   friendInfo: {
     flex: 1,
@@ -394,5 +412,29 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
+  },
+  // 삭제/취소 버튼 스타일 (파일 화면과 동일)
+  deleteButtonContainer: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+  },
+  deleteButton: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minWidth: 40,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#dc2626',
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    color: 'white',
+    fontWeight: '600',
   },
 });

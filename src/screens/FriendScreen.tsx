@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, Alert, Modal, TextInput, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { UserAPI, getProfileImageUrl } from '@/services/api';
 import { styles } from '@/styles/screens/friend/FriendScreen';
@@ -12,9 +12,9 @@ export default function FriendScreen() {
   const navigation = useNavigation();
   const route = useRoute();
   const [friends, setFriends] = useState<UserTableDTO[]>([]);
+  const [friendRequests, setFriendRequests] = useState<UserTableDTO[]>([]);
   const [pendingFriends, setPendingFriends] = useState<UserTableDTO[]>([]);
   const [rejectedFriends, setRejectedFriends] = useState<UserTableDTO[]>([]);
-  const [myFriends, setMyFriends] = useState<UserTableDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [searchUserId, setSearchUserId] = useState('');
@@ -22,6 +22,7 @@ export default function FriendScreen() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(null);
   const [addFriendLoading, setAddFriendLoading] = useState(false);
+  const [deletingFriend, setDeletingFriend] = useState<string | null>(null);
   
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const currentUserId = getSubjectFromToken(accessToken);
@@ -32,13 +33,15 @@ export default function FriendScreen() {
     
     try {
       setLoading(true);
-      const [friendsResponse, pendingResponse, rejectedResponse] = await Promise.all([
+      const [friendsResponse, friendRequestsResponse, pendingResponse, rejectedResponse] = await Promise.all([
         UserAPI.findFriendEachOther(currentUserId),
+        UserAPI.findFriendWhoAddMeButImNot(currentUserId),
         UserAPI.findFriendWhoImAddButNot(currentUserId),
         UserAPI.findFriendWhoImAddButReject(currentUserId)
       ]);
       
       setFriends(friendsResponse.data || []);
+      setFriendRequests(friendRequestsResponse.data || []);
       setPendingFriends(pendingResponse.data || []);
       setRejectedFriends(rejectedResponse.data || []);
           } catch (error) {
@@ -201,6 +204,82 @@ export default function FriendScreen() {
     }
   };
 
+  // 친구 삭제/요청 취소
+  const handleDeleteFriend = async (targetUserId: string, targetUserName: string, actionType: 'delete' | 'cancel') => {
+    console.log('handleDeleteFriend 호출됨:', { targetUserId, targetUserName, actionType, currentUserId });
+    
+    if (!currentUserId) {
+      console.log('currentUserId가 없음');
+      return;
+    }
+    
+    const actionText = actionType === 'delete' ? '삭제' : '취소';
+    const confirmMessage = actionType === 'delete' 
+      ? `${targetUserName}님을 친구 목록에서 삭제하시겠습니까?`
+      : `${targetUserName}님에게 보낸 친구 요청을 취소하시겠습니까?`;
+    
+    console.log('확인 다이얼로그 표시:', { actionText, confirmMessage });
+    
+    // 웹 환경에서는 window.confirm 사용
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm(confirmMessage);
+      if (confirmed) {
+        console.log('삭제/취소 확인됨');
+        setDeletingFriend(targetUserId);
+        try {
+          console.log('API 호출 시작:', { currentUserId, targetUserId });
+          await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
+          
+          console.log('API 호출 성공');
+          window.alert(`${targetUserName}님을 ${actionText}했습니다.`);
+          
+          // 친구 목록 새로고침
+          loadFriends();
+        } catch (error) {
+          console.error('API 호출 실패:', error);
+          window.alert(`${actionText}에 실패했습니다.`);
+        } finally {
+          setDeletingFriend(null);
+        }
+      }
+    } else {
+      // 네이티브 환경에서는 Alert.alert 사용
+      Alert.alert(
+        `${actionText} 확인`,
+        confirmMessage,
+        [
+          {
+            text: '취소',
+            style: 'cancel',
+          },
+          {
+            text: actionText,
+            style: 'destructive',
+            onPress: async () => {
+              console.log('삭제/취소 확인됨');
+              setDeletingFriend(targetUserId);
+              try {
+                console.log('API 호출 시작:', { currentUserId, targetUserId });
+                await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
+                
+                console.log('API 호출 성공');
+                Alert.alert('성공', `${targetUserName}님을 ${actionText}했습니다.`);
+                
+                // 친구 목록 새로고침
+                loadFriends();
+              } catch (error) {
+                console.error('API 호출 실패:', error);
+                Alert.alert('실패', `${actionText}에 실패했습니다.`);
+              } finally {
+                setDeletingFriend(null);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -225,128 +304,218 @@ export default function FriendScreen() {
 
         {/* 우측 메인 영역 - 친구 목록 */}
         <View style={styles.mainContent}>
-          <Text style={styles.sectionTitle}>친구 목록</Text>
-          
-          {friends.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>아직 친구가 없습니다.</Text>
-              <Text style={styles.emptyStateSubText}>친구 추가 버튼을 눌러 친구를 추가해보세요!</Text>
+          <ScrollView style={styles.mainScrollView} showsVerticalScrollIndicator={true}>
+            <Text style={styles.sectionTitle}>친구 목록</Text>
+            
+            {friends.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>아직 친구가 없습니다.</Text>
+                <Text style={styles.emptyStateSubText}>친구 추가 버튼을 눌러 친구를 추가해보세요!</Text>
+              </View>
+            ) : (
+              <View style={styles.friendsList}>
+                {friends.map((friend) => (
+                  <View key={friend.userId} style={styles.friendCard}>
+                    <TouchableOpacity
+                      style={styles.friendCardTouchable}
+                      onPress={() => handleFriendProfile(friend)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.friendCardHeader}>
+                        <View style={styles.friendNameContainer}>
+                          <Text style={styles.friendName}>{friend.name}</Text>
+                          <Text style={styles.friendNickname}>{friend.nickName}</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.friendCardContent}>
+                        <Image
+                          source={getProfileImageUrl(friend.pictureNm)}
+                          style={styles.friendProfileImage}
+                        />
+                        <View style={styles.friendInfo}>
+                          <Text style={styles.friendEmail}>{friend.email}</Text>
+                          <Text style={styles.friendLoginType}>{friend.loginType}</Text>
+                          <Text style={styles.friendJoinDate}>가입일: {friend.regDtm}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                    
+                    <View style={styles.deleteButtonContainer}>
+                      <Pressable 
+                        style={styles.deleteButton}
+                        onPress={() => {
+                          console.log('친구 삭제 버튼 눌림:', friend.userId);
+                          handleDeleteFriend(friend.userId, friend.name, 'delete');
+                        }}
+                        disabled={deletingFriend === friend.userId}
+                      >
+                        <Text style={styles.deleteButtonText}>
+                          {deletingFriend === friend.userId ? '삭제 중...' : '친구 삭제'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 친구 요청 목록 */}
+            <View style={[styles.friendRequestSection, { marginTop: friends.length === 0 ? 10 : 20 }]}>
+              <Text style={styles.sectionTitle}>친구 요청</Text>
+              
+              {friendRequests.length > 0 ? (
+                <View style={styles.friendsList}>
+                  {friendRequests.map((friendRequest) => (
+                    <TouchableOpacity
+                      key={friendRequest.userId}
+                      style={styles.friendCard}
+                      onPress={() => handleFriendProfile(friendRequest)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.friendCardHeader}>
+                        <View style={styles.friendNameContainer}>
+                          <Text style={styles.friendName}>{friendRequest.name}</Text>
+                          <Text style={styles.friendNickname}>{friendRequest.nickName}</Text>
+                        </View>
+                        <Text style={styles.friendRequestStatus}>요청됨</Text>
+                      </View>
+                      
+                      <View style={styles.friendCardContent}>
+                        <Image
+                          source={getProfileImageUrl(friendRequest.pictureNm)}
+                          style={styles.friendProfileImage}
+                        />
+                        <View style={styles.friendInfo}>
+                          <Text style={styles.friendEmail}>{friendRequest.email}</Text>
+                          <Text style={styles.friendLoginType}>{friendRequest.loginType}</Text>
+                          <Text style={styles.friendJoinDate}>가입일: {friendRequest.regDtm}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptySpace} />
+              )}
             </View>
-          ) : (
-            <ScrollView style={styles.friendsList} showsVerticalScrollIndicator={true}>
-              {friends.map((friend) => (
-                <TouchableOpacity
-                  key={friend.userId}
-                  style={styles.friendCard}
-                  onPress={() => handleFriendProfile(friend)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.friendCardHeader}>
-                    <View style={styles.friendNameContainer}>
-                      <Text style={styles.friendName}>{friend.name}</Text>
-                      <Text style={styles.friendNickname}>{friend.nickName}</Text>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.friendCardContent}>
-                    <Image
-                      source={getProfileImageUrl(friend.pictureNm)}
-                      style={styles.friendProfileImage}
-                    />
-                    <View style={styles.friendInfo}>
-                      <Text style={styles.friendEmail}>{friend.email}</Text>
-                      <Text style={styles.friendLoginType}>{friend.loginType}</Text>
-                      <Text style={styles.friendJoinDate}>가입일: {friend.regDtm}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
 
-                     {/* 친구 수락 대기중 목록 */}
-           <View style={[styles.pendingSection, { marginTop: friends.length === 0 ? 10 : 20 }]}>
-             <Text style={styles.sectionTitle}>친구 수락 대기중</Text>
-            
-            {pendingFriends.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>수락 대기중인 친구 요청이 없습니다.</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.friendsList} showsVerticalScrollIndicator={true}>
-                {pendingFriends.map((pendingFriend) => (
-                  <TouchableOpacity
-                    key={pendingFriend.userId}
-                    style={styles.friendCard}
-                    onPress={() => handleFriendProfile(pendingFriend)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.friendCardHeader}>
-                      <View style={styles.friendNameContainer}>
-                        <Text style={styles.friendName}>{pendingFriend.name}</Text>
-                        <Text style={styles.friendNickname}>{pendingFriend.nickName}</Text>
+            {/* 친구 수락 대기중 목록 */}
+            <View style={[styles.pendingSection, { marginTop: 15 }]}>
+              <Text style={styles.sectionTitle}>친구 수락 대기중</Text>
+             
+              {pendingFriends.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>수락 대기중인 친구 요청이 없습니다.</Text>
+                </View>
+              ) : (
+                <View style={styles.friendsList}>
+                  {pendingFriends.map((pendingFriend) => (
+                    <View key={pendingFriend.userId} style={styles.friendCard}>
+                      <TouchableOpacity
+                        style={styles.friendCardTouchable}
+                        onPress={() => handleFriendProfile(pendingFriend)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.friendCardHeader}>
+                          <View style={styles.friendNameContainer}>
+                            <Text style={styles.friendName}>{pendingFriend.name}</Text>
+                            <Text style={styles.friendNickname}>{pendingFriend.nickName}</Text>
+                          </View>
+                          <Text style={styles.pendingStatus}>수락 대기중</Text>
+                        </View>
+                        
+                        <View style={styles.friendCardContent}>
+                          <Image
+                            source={getProfileImageUrl(pendingFriend.pictureNm)}
+                            style={styles.friendProfileImage}
+                          />
+                          <View style={styles.friendInfo}>
+                            <Text style={styles.friendEmail}>{pendingFriend.email}</Text>
+                            <Text style={styles.friendLoginType}>{pendingFriend.loginType}</Text>
+                            <Text style={styles.friendJoinDate}>가입일: {pendingFriend.regDtm}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      
+                      <View style={styles.deleteButtonContainer}>
+                        <Pressable 
+                          style={styles.deleteButton}
+                          onPress={() => {
+                            console.log('요청 취소 버튼 눌림:', pendingFriend.userId);
+                            handleDeleteFriend(pendingFriend.userId, pendingFriend.name, 'cancel');
+                          }}
+                          disabled={deletingFriend === pendingFriend.userId}
+                        >
+                          <Text style={styles.deleteButtonText}>
+                            {deletingFriend === pendingFriend.userId ? '취소 중...' : '요청 취소'}
+                          </Text>
+                        </Pressable>
                       </View>
-                      <Text style={styles.pendingStatus}>수락 대기중</Text>
                     </View>
-                    
-                    <View style={styles.friendCardContent}>
-                      <Image
-                        source={getProfileImageUrl(pendingFriend.pictureNm)}
-                        style={styles.friendProfileImage}
-                      />
-                      <View style={styles.friendInfo}>
-                        <Text style={styles.friendEmail}>{pendingFriend.email}</Text>
-                        <Text style={styles.friendLoginType}>{pendingFriend.loginType}</Text>
-                        <Text style={styles.friendJoinDate}>가입일: {pendingFriend.regDtm}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+                  ))}
+                </View>
+              )}
+            </View>
 
-                     {/* 거절한 친구 목록 */}
-           <View style={[styles.rejectedSection, { marginTop: pendingFriends.length === 0 ? 10 : 20 }]}>
-             <Text style={styles.sectionTitle}>거절한 친구</Text>
-            
-            {rejectedFriends.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>거절한 친구 요청이 없습니다.</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.friendsList} showsVerticalScrollIndicator={true}>
-                {rejectedFriends.map((rejectedFriend) => (
-                  <TouchableOpacity
-                    key={rejectedFriend.userId}
-                    style={styles.friendCard}
-                    onPress={() => handleFriendProfile(rejectedFriend)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.friendCardHeader}>
-                      <View style={styles.friendNameContainer}>
-                        <Text style={styles.friendName}>{rejectedFriend.name}</Text>
-                        <Text style={styles.friendNickname}>{rejectedFriend.nickName}</Text>
+            {/* 거절한 친구 목록 */}
+            <View style={[styles.rejectedSection, { marginTop: 15 }]}>
+              <Text style={styles.sectionTitle}>거절한 친구</Text>
+             
+              {rejectedFriends.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>거절한 친구 요청이 없습니다.</Text>
+                </View>
+              ) : (
+                <View style={styles.friendsList}>
+                  {rejectedFriends.map((rejectedFriend) => (
+                    <View key={rejectedFriend.userId} style={styles.friendCard}>
+                      <TouchableOpacity
+                        style={styles.friendCardTouchable}
+                        onPress={() => handleFriendProfile(rejectedFriend)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.friendCardHeader}>
+                          <View style={styles.friendNameContainer}>
+                            <Text style={styles.friendName}>{rejectedFriend.name}</Text>
+                            <Text style={styles.friendNickname}>{rejectedFriend.nickName}</Text>
+                          </View>
+                          <Text style={styles.rejectedStatus}>거절됨</Text>
+                        </View>
+                        
+                        <View style={styles.friendCardContent}>
+                          <Image
+                            source={getProfileImageUrl(rejectedFriend.pictureNm)}
+                            style={styles.friendProfileImage}
+                          />
+                          <View style={styles.friendInfo}>
+                            <Text style={styles.friendEmail}>{rejectedFriend.email}</Text>
+                            <Text style={styles.friendLoginType}>{rejectedFriend.loginType}</Text>
+                            <Text style={styles.friendJoinDate}>가입일: {rejectedFriend.regDtm}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      
+                      <View style={styles.deleteButtonContainer}>
+                        <Pressable 
+                          style={styles.deleteButton}
+                          onPress={() => {
+                            console.log('거절한 친구 삭제 버튼 눌림:', rejectedFriend.userId);
+                            handleDeleteFriend(rejectedFriend.userId, rejectedFriend.name, 'delete');
+                          }}
+                          disabled={deletingFriend === rejectedFriend.userId}
+                        >
+                          <Text style={styles.deleteButtonText}>
+                            {deletingFriend === rejectedFriend.userId ? '삭제 중...' : '친구 삭제'}
+                          </Text>
+                        </Pressable>
                       </View>
-                      <Text style={styles.rejectedStatus}>거절됨</Text>
                     </View>
-                    
-                    <View style={styles.friendCardContent}>
-                      <Image
-                        source={getProfileImageUrl(rejectedFriend.pictureNm)}
-                        style={styles.friendProfileImage}
-                      />
-                      <View style={styles.friendInfo}>
-                        <Text style={styles.friendEmail}>{rejectedFriend.email}</Text>
-                        <Text style={styles.friendLoginType}>{rejectedFriend.loginType}</Text>
-                        <Text style={styles.friendJoinDate}>가입일: {rejectedFriend.regDtm}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </View>
       </View>
 

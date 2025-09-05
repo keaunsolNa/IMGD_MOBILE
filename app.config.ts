@@ -6,7 +6,7 @@ const config: ExpoConfig = {
     slug: 'imgd-mobile',
     scheme: 'imgd', // deep link: imgd://
     extra: {
-        API_BASE_URL: process.env.API_BASE_URL,
+        API_BASE_URL: process.env.API_BASE_URL || 'http://localhost',
         API_DOMAIN: process.env.API_DOMAIN,
         API_LOCAL: process.env.API_LOCAL,
         AUTH_REDIRECT_SCHEME: process.env.AUTH_REDIRECT_SCHEME

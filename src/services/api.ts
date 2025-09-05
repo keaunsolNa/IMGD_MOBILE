@@ -8,16 +8,23 @@ import { store } from '@/redux/store';
 import { setAuth } from '@/redux/authSlice';
 
 function resolveApiBaseUrl(): string {
+  console.log('resolveApiBaseUrl');
+  
   const fromExtra = Constants.expoConfig?.extra?.API_BASE_URL as string | undefined;
-  if (fromExtra && /^https?:\/\//i.test(fromExtra)) {
-    return stripTrailingSlash(fromExtra);
-  }
+  console.log('fromExtra', fromExtra);
+  console.log('Constants.expoConfig?.extra 전체:', Constants.expoConfig?.extra);
+  console.log('process.env.API_BASE_URL:', process.env.API_BASE_URL);
 
+  // 웹 환경에서는 강제로 Nginx 포트 사용 (최우선)
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const u = new URL(window.location.origin);
-    u.protocol = 'http:';
-    u.port = '80';
-    return stripTrailingSlash(u.toString());
+    console.log('웹 환경: http://localhost 강제 사용');
+    return 'http://localhost';
+  }
+  
+  
+  if (fromExtra && /^https?:\/\//i.test(fromExtra)) {
+    console.log('extra 값 사용:', fromExtra);
+    return stripTrailingSlash(fromExtra);
   }
 
   if (Platform.OS === 'android') return 'http://192.168.35.252:80';
