@@ -1,15 +1,15 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '../screens/auth/LoginScreen';
+import HomeScreen from '../screens/home/HomeScreen';
 import GroupScreen from '../screens/group/GroupScreen';
-import FileScreen from '../screens/FileScreen';
+import FileScreen from '../screens/file/FileScreen';
 import MakeGroupScreen from '../screens/group/MakeGroupScreen';
 
 import GroupUserScreen from '../screens/group/GroupUserScreen';
-import MyPageScreen from '../screens/MyPageScreen';
-import FriendScreen from '../screens/FriendScreen';
+import MyPageScreen from '../screens/myPage/MyPageScreen';
+import FriendScreen from '../screens/friend/FriendScreen';
 import HeaderButtons from '../components/HeaderButtons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
