@@ -247,7 +247,10 @@ export default function GroupScreen({ navigation }: any) {
                       style={styles.userItem}
                       onPress={() => navigateToGroupUser(group.groupId!, group.groupNm, user.userId)}
                     >
-                      <Text style={styles.userName}>소속 유저: {user.userNm}</Text>
+                      <Text style={styles.userName}>
+                        소속 유저: {user.userNm}
+                        {user.userId === group.groupMstUserId && ' 👑'}
+                      </Text>
                       <Text style={styles.joinDate}>가입 일자: {user.regDtm}</Text>
                     </TouchableOpacity>
                   )) || (
