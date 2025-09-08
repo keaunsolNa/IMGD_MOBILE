@@ -437,4 +437,158 @@ export const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
+  // 헤더 스타일
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  // 알림 버튼 스타일
+  notificationButton: {
+    padding: 8,
+  },
+  notificationIcon: {
+    position: 'relative',
+  },
+  notificationIconText: {
+    fontSize: 24,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#ff4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  // 친구 요청 액션 버튼 스타일
+  friendRequestActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    justifyContent: 'flex-end',
+  },
+  acceptButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  acceptButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  rejectButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  rejectButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    backgroundColor: '#6c757d',
+    opacity: 0.6,
+  },
+  // 친구 요청 모달 스타일
+  friendRequestModalContent: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 20,
+    width: '90%',
+    maxHeight: '70%',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  friendRequestModalList: {
+    maxHeight: 400,
+  },
+  friendRequestModalItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  friendRequestModalUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  friendRequestModalProfileImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 12,
+  },
+  friendRequestModalUserDetails: {
+    flex: 1,
+  },
+  friendRequestModalUserName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  friendRequestModalUserNickname: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  friendRequestModalActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  friendRequestModalAcceptButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  friendRequestModalAcceptButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  friendRequestModalRejectButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  friendRequestModalRejectButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

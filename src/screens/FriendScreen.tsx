@@ -23,6 +23,8 @@ export default function FriendScreen() {
   const [searchErrorMessage, setSearchErrorMessage] = useState<string | null>(null);
   const [addFriendLoading, setAddFriendLoading] = useState(false);
   const [deletingFriend, setDeletingFriend] = useState<string | null>(null);
+  const [showFriendRequestModal, setShowFriendRequestModal] = useState(false);
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null);
   
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const currentUserId = getSubjectFromToken(accessToken);
@@ -204,6 +206,80 @@ export default function FriendScreen() {
     }
   };
 
+  // 친구 요청 수락/거절
+  const handleFriendRequestAction = async (targetUserId: string, targetUserName: string, action: 'accept' | 'reject') => {
+    if (!currentUserId) return;
+    
+    const actionText = action === 'accept' ? '수락' : '거절';
+    const relationship = action === 'accept' ? 'F' : 'R';
+    const confirmMessage = action === 'accept' 
+      ? `${targetUserName}님의 친구 요청을 수락하시겠습니까?`
+      : `${targetUserName}님의 친구 요청을 거절하시겠습니까?`;
+    
+    // 웹 환경에서는 window.confirm 사용
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm(confirmMessage);
+      if (confirmed) {
+        setProcessingRequest(targetUserId);
+        try {
+          await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
+          
+          window.alert(`${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
+          
+          // 친구 목록 새로고침
+          loadFriends();
+          
+          // 친구 요청이 없으면 모달 닫기
+          if (friendRequests.length <= 1) {
+            setShowFriendRequestModal(false);
+          }
+        } catch (error) {
+          console.error('친구 요청 처리 실패:', error);
+          window.alert(`${actionText}에 실패했습니다.`);
+        } finally {
+          setProcessingRequest(null);
+        }
+      }
+    } else {
+      // 네이티브 환경에서는 Alert.alert 사용
+      Alert.alert(
+        `친구 요청 ${actionText}`,
+        confirmMessage,
+        [
+          {
+            text: '취소',
+            style: 'cancel',
+          },
+          {
+            text: actionText,
+            style: action === 'accept' ? 'default' : 'destructive',
+            onPress: async () => {
+              setProcessingRequest(targetUserId);
+              try {
+                await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
+                
+                Alert.alert('성공', `${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
+                
+                // 친구 목록 새로고침
+                loadFriends();
+                
+                // 친구 요청이 없으면 모달 닫기
+                if (friendRequests.length <= 1) {
+                  setShowFriendRequestModal(false);
+                }
+              } catch (error) {
+                console.error('친구 요청 처리 실패:', error);
+                Alert.alert('실패', `${actionText}에 실패했습니다.`);
+              } finally {
+                setProcessingRequest(null);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
   // 친구 삭제/요청 취소
   const handleDeleteFriend = async (targetUserId: string, targetUserName: string, actionType: 'delete' | 'cancel') => {
     console.log('handleDeleteFriend 호출됨:', { targetUserId, targetUserName, actionType, currentUserId });
@@ -291,7 +367,22 @@ export default function FriendScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>My Friends</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>My Friends</Text>
+        {friendRequests.length > 0 && (
+          <TouchableOpacity 
+            style={styles.notificationButton}
+            onPress={() => setShowFriendRequestModal(true)}
+          >
+            <View style={styles.notificationIcon}>
+              <Text style={styles.notificationIconText}>🔔</Text>
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>{friendRequests.length}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
       
       <View style={styles.content}>
                  {/* 좌측 사이드바 - 친구 추가 버튼 */}
@@ -367,32 +458,55 @@ export default function FriendScreen() {
               {friendRequests.length > 0 ? (
                 <View style={styles.friendsList}>
                   {friendRequests.map((friendRequest) => (
-                    <TouchableOpacity
-                      key={friendRequest.userId}
-                      style={styles.friendCard}
-                      onPress={() => handleFriendProfile(friendRequest)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.friendCardHeader}>
-                        <View style={styles.friendNameContainer}>
-                          <Text style={styles.friendName}>{friendRequest.name}</Text>
-                          <Text style={styles.friendNickname}>{friendRequest.nickName}</Text>
+                    <View key={friendRequest.userId} style={styles.friendCard}>
+                      <TouchableOpacity
+                        style={styles.friendCardTouchable}
+                        onPress={() => handleFriendProfile(friendRequest)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.friendCardHeader}>
+                          <View style={styles.friendNameContainer}>
+                            <Text style={styles.friendName}>{friendRequest.name}</Text>
+                            <Text style={styles.friendNickname}>{friendRequest.nickName}</Text>
+                          </View>
+                          <Text style={styles.friendRequestStatus}>요청됨</Text>
                         </View>
-                        <Text style={styles.friendRequestStatus}>요청됨</Text>
-                      </View>
+                        
+                        <View style={styles.friendCardContent}>
+                          <Image
+                            source={getProfileImageUrl(friendRequest.pictureNm)}
+                            style={styles.friendProfileImage}
+                          />
+                          <View style={styles.friendInfo}>
+                            <Text style={styles.friendEmail}>{friendRequest.email}</Text>
+                            <Text style={styles.friendLoginType}>{friendRequest.loginType}</Text>
+                            <Text style={styles.friendJoinDate}>가입일: {friendRequest.regDtm}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
                       
-                      <View style={styles.friendCardContent}>
-                        <Image
-                          source={getProfileImageUrl(friendRequest.pictureNm)}
-                          style={styles.friendProfileImage}
-                        />
-                        <View style={styles.friendInfo}>
-                          <Text style={styles.friendEmail}>{friendRequest.email}</Text>
-                          <Text style={styles.friendLoginType}>{friendRequest.loginType}</Text>
-                          <Text style={styles.friendJoinDate}>가입일: {friendRequest.regDtm}</Text>
-                        </View>
+                      <View style={styles.friendRequestActions}>
+                        <TouchableOpacity
+                          style={[styles.acceptButton, processingRequest === friendRequest.userId && styles.buttonDisabled]}
+                          onPress={() => handleFriendRequestAction(friendRequest.userId, friendRequest.name, 'accept')}
+                          disabled={processingRequest === friendRequest.userId}
+                        >
+                          <Text style={styles.acceptButtonText}>
+                            {processingRequest === friendRequest.userId ? '처리 중...' : '수락'}
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={[styles.rejectButton, processingRequest === friendRequest.userId && styles.buttonDisabled]}
+                          onPress={() => handleFriendRequestAction(friendRequest.userId, friendRequest.name, 'reject')}
+                          disabled={processingRequest === friendRequest.userId}
+                        >
+                          <Text style={styles.rejectButtonText}>
+                            {processingRequest === friendRequest.userId ? '처리 중...' : '거절'}
+                          </Text>
+                        </TouchableOpacity>
                       </View>
-                    </TouchableOpacity>
+                    </View>
                   ))}
                 </View>
               ) : (
@@ -635,6 +749,67 @@ export default function FriendScreen() {
                 </View>
               </View>
             ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      {/* 친구 요청 팝업 모달 */}
+      <Modal
+        visible={showFriendRequestModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowFriendRequestModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.friendRequestModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>친구 요청</Text>
+              <TouchableOpacity 
+                onPress={() => setShowFriendRequestModal(false)} 
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.friendRequestModalList}>
+              {friendRequests.map((friendRequest) => (
+                <View key={friendRequest.userId} style={styles.friendRequestModalItem}>
+                  <View style={styles.friendRequestModalUserInfo}>
+                    <Image
+                      source={getProfileImageUrl(friendRequest.pictureNm)}
+                      style={styles.friendRequestModalProfileImage}
+                    />
+                    <View style={styles.friendRequestModalUserDetails}>
+                      <Text style={styles.friendRequestModalUserName}>{friendRequest.name}</Text>
+                      <Text style={styles.friendRequestModalUserNickname}>{friendRequest.nickName}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.friendRequestModalActions}>
+                    <TouchableOpacity
+                      style={[styles.friendRequestModalAcceptButton, processingRequest === friendRequest.userId && styles.buttonDisabled]}
+                      onPress={() => handleFriendRequestAction(friendRequest.userId, friendRequest.name, 'accept')}
+                      disabled={processingRequest === friendRequest.userId}
+                    >
+                      <Text style={styles.friendRequestModalAcceptButtonText}>
+                        {processingRequest === friendRequest.userId ? '처리 중...' : '수락'}
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[styles.friendRequestModalRejectButton, processingRequest === friendRequest.userId && styles.buttonDisabled]}
+                      onPress={() => handleFriendRequestAction(friendRequest.userId, friendRequest.name, 'reject')}
+                      disabled={processingRequest === friendRequest.userId}
+                    >
+                      <Text style={styles.friendRequestModalRejectButtonText}>
+                        {processingRequest === friendRequest.userId ? '처리 중...' : '거절'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>

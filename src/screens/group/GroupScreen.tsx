@@ -11,6 +11,7 @@ import type { UserTableDTO } from '@/types/dto';
 type GroupCard = {
   groupId?: number;
   groupNm: string;
+  groupMstUserId?: string;
   groupMstUserNm?: string;
   regDtm?: string;
 };
@@ -136,40 +137,47 @@ export default function GroupScreen({ navigation }: any) {
       
       await GroupAPI.addGroupUser(dto, friend.userId);
       
-      // 성공 메시지 표시
-      Alert.alert(
-        '그룹원 추가 성공! 🎉', 
-        `${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`,
-        [
-          {
-            text: '확인',
-            onPress: async () => {
-              // 모달 닫기
-              handleCloseAddMemberModal();
-              
-              // 그룹 목록 새로고침
-              await loadGroups();
-              
-              // 해당 그룹을 자동으로 확장
-              if (selectedGroupId) {
-                setExpandedGroups(prev => new Set([...prev, selectedGroupId]));
-                
-                // 해당 그룹의 유저 목록도 새로고침
-                try {
-                  const { data } = await GroupAPI.findGroupUserWhatInside(selectedGroupId);
-                  const users = Array.isArray(data) ? data : [];
-                  setGroupUsers(new Map(groupUsers.set(selectedGroupId, users)));
-                } catch (error) {
-                  // 그룹 유저 목록 새로고침 실패
-                }
-              }
-            }
+      // 성공 후 처리 함수
+      const handleSuccess = async () => {
+        // 모달 닫기
+        handleCloseAddMemberModal();
+        
+        // 그룹 목록 새로고침
+        await loadGroups();
+        
+        // 해당 그룹을 자동으로 확장
+        if (selectedGroupId) {
+          setExpandedGroups(prev => new Set([...prev, selectedGroupId]));
+          
+          // 해당 그룹의 유저 목록도 새로고침
+          try {
+            const { data } = await GroupAPI.findGroupUserWhatInside(selectedGroupId);
+            const users = Array.isArray(data) ? data : [];
+            setGroupUsers(new Map(groupUsers.set(selectedGroupId, users)));
+          } catch (error) {
+            // 그룹 유저 목록 새로고침 실패
           }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('그룹원 추가 실패', '그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
+        }
+      };
       
+      // 웹 환경에서는 window.alert 사용
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`그룹원 추가 성공! 🎉\n${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`);
+        await handleSuccess();
+      } else {
+        // 네이티브 환경에서는 Alert.alert 사용
+        Alert.alert(
+          '그룹원 추가 성공! 🎉', 
+          `${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`,
+          [
+            {
+              text: '확인',
+              onPress: handleSuccess
+            }
+          ]
+        );
+      }
+    } catch (error) {
       // 에러 발생 시 로딩 상태 해제
       setAvailableFriends(prev => 
         prev.map(f => 
@@ -178,6 +186,14 @@ export default function GroupScreen({ navigation }: any) {
             : f
         )
       );
+      
+      // 웹 환경에서는 window.alert 사용
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert('그룹원 추가 실패\n그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
+      } else {
+        // 네이티브 환경에서는 Alert.alert 사용
+        Alert.alert('그룹원 추가 실패', '그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
+      }
     }
   };
 
@@ -216,12 +232,14 @@ export default function GroupScreen({ navigation }: any) {
                 <View style={styles.userSection}>
                   <View style={styles.userSectionHeader}>
                     <Text style={styles.userSectionTitle}>소속 유저 목록</Text>
-                    <TouchableOpacity 
-                      style={styles.addMemberButton}
-                      onPress={() => handleAddMember(group.groupId!, group.groupNm)}
-                    >
-                      <Text style={styles.addMemberButtonText}>그룹원 추가</Text>
-                    </TouchableOpacity>
+                    {group.groupMstUserId === subject && (
+                      <TouchableOpacity 
+                        style={styles.addMemberButton}
+                        onPress={() => handleAddMember(group.groupId!, group.groupNm)}
+                      >
+                        <Text style={styles.addMemberButtonText}>그룹원 추가</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   {groupUsers.get(group.groupId!)?.map((user, userIdx) => (
                     <TouchableOpacity 
