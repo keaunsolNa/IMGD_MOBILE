@@ -216,7 +216,10 @@ export default function GroupScreen({ navigation }: any) {
                 onPress={() => group.groupId && toggleGroupExpansion(group.groupId)}
               >
                 <View style={styles.cardInfo}>
-                  <Text style={styles.groupName}>{group.groupNm}</Text>
+                  <Text style={styles.groupName}>
+                    {group.groupNm}
+                    {group.groupMstUserId === subject && ' 👑'}
+                  </Text>
                   <Text style={styles.masterName}>Master: {group.groupMstUserNm || 'N/A'}</Text>
                   <Text style={styles.regDtm}>그룹 생성 시간: {group.regDtm || 'N/A'}</Text>
                 </View>
