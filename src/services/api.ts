@@ -110,8 +110,13 @@ export const HealthAPI = {
 
 // --- 도메인 API
 export const GroupAPI = {
+  // ApiResponse 구조를 반환하는 API들
   createGroup: (payload: { groupNm: string }) => api.post(`/api/group/createGroup`, payload),
   addGroupUser: (dto: any, userId: string) => api.post(`/api/group/makeNewGroupUser`, dto, { params: { userId } }),
+  deleteGroupUser: (dto: any, userId: string) => api.delete(`/api/group/deleteGroupUser`, { data: dto, params: { userId } }),
+  changeMstUserGroup: (dto: any, userId: string) => api.post(`/api/group/changeMstUserGroup`, dto, { params: { userId } }),
+  
+  // 기존 구조를 유지하는 API들 (ApiResponse를 사용하지 않음)
   findGroupName: (userId: string) => api.get(`/api/group/findGroupName`, { params: { userId } }),
   findGroupWhatInside: (userId: string) => api.get(`/api/group/findGroupWhatInside`, { params: { userId } }),
   findGroupUserWhatInside: (groupId: number) => api.get(`/api/group/findGroupUserWhatInside`, { params: { groupId } }),

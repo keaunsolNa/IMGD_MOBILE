@@ -76,8 +76,8 @@ export default function MyPageScreen({ route }: any) {
         nickName: newNickName.trim() 
       });
       
-      // 백엔드에서 DTO를 직접 반환하는 경우
-      if (response.data && response.data.userId) {
+      // ApiResponse 구조 확인
+      if (response.data.success) {
         // 로컬 상태 업데이트
         setUser(prev => prev ? { ...prev, nickName: newNickName.trim() } : null);
         setIsEditing(false);
@@ -87,24 +87,30 @@ export default function MyPageScreen({ route }: any) {
         
         // 사용자 정보 다시 로드
         loadUserInfo();
-      } else if (response.data && response.data.success === true) {
-        // 기존 ResponseEntity 형태인 경우
-        setUser(prev => prev ? { ...prev, nickName: newNickName.trim() } : null);
-        setIsEditing(false);
-        setNewNickName('');
-        
-        showUpdateMessage('유저 정보가 변경되었습니다.', 'success');
-        
-        // 사용자 정보 다시 로드
-        loadUserInfo();
-      } else if (response.data && response.data.success === false) {
-        showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
       } else {
-        // 응답은 받았지만 예상과 다른 경우
-        showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '유저 정보 변경에 실패했습니다.';
+        showUpdateMessage(errorMessage, 'error');
       }
     } catch (e: any) {
-      showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+      console.error('유저 정보 변경 실패:', e);
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (e.response && e.response.data) {
+        const responseData = e.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          showUpdateMessage(responseData.error.message, 'error');
+        } else if (responseData.message) {
+          showUpdateMessage(responseData.message, 'error');
+        } else {
+          showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+        }
+      } else {
+        // 네트워크 에러나 기타 에러
+        showUpdateMessage('유저 정보 변경에 실패했습니다.', 'error');
+      }
     }
   };
 

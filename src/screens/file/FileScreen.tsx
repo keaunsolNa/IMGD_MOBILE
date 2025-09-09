@@ -180,11 +180,12 @@ export default function FileScreen() {
         try {
           const response = await FileAPI.deleteFile(file.fileId!);
           
-          if (response && response.data) {
+          // ApiResponse 구조 확인
+          if (response.data.success) {
             window.alert('파일이 삭제되었습니다.');
             
             // 삭제된 파일의 parentId로 이동
-            const parentId = response.data.parentId;
+            const parentId = response.data.data.parentId;
             if (parentId) {
               setCurrentParentId(parentId);
               // 디렉터리 스택을 parentId에 맞게 조정
@@ -203,11 +204,29 @@ export default function FileScreen() {
               await loadFilesAndDirectories(selectedGroup.groupId, parentId);
             }
           } else {
-            window.alert('파일 삭제에 실패했습니다.');
+            // API에서 에러 응답을 받은 경우
+            const errorMessage = response.data.error?.message || '파일 삭제에 실패했습니다.';
+            window.alert(errorMessage);
           }
         } catch (error: any) {
           console.error('파일 삭제 실패:', error);
-          window.alert('파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+          
+          // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+          if (error.response && error.response.data) {
+            const responseData = error.response.data;
+            
+            // ApiResponse 구조인 경우
+            if (responseData.error && responseData.error.message) {
+              window.alert(responseData.error.message);
+            } else if (responseData.message) {
+              window.alert(responseData.message);
+            } else {
+              window.alert('파일 삭제에 실패했습니다.');
+            }
+          } else {
+            // 네트워크 에러나 기타 에러
+            window.alert('파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+          }
         }
       }
     } else {
@@ -227,11 +246,12 @@ export default function FileScreen() {
               try {
                 const response = await FileAPI.deleteFile(file.fileId!);
                 
-                if (response && response.data) {
+                // ApiResponse 구조 확인
+                if (response.data.success) {
                   Alert.alert('성공', '파일이 삭제되었습니다.');
                   
                   // 삭제된 파일의 parentId로 이동
-                  const parentId = response.data.parentId;
+                  const parentId = response.data.data.parentId;
                   if (parentId) {
                     setCurrentParentId(parentId);
                     // 디렉터리 스택을 parentId에 맞게 조정
@@ -250,11 +270,29 @@ export default function FileScreen() {
                     await loadFilesAndDirectories(selectedGroup.groupId!, parentId);
                   }
                 } else {
-                  Alert.alert('오류', '파일 삭제에 실패했습니다.');
+                  // API에서 에러 응답을 받은 경우
+                  const errorMessage = response.data.error?.message || '파일 삭제에 실패했습니다.';
+                  Alert.alert('오류', errorMessage);
                 }
               } catch (error: any) {
                 console.error('파일 삭제 실패:', error);
-                Alert.alert('오류', '파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+                
+                // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+                if (error.response && error.response.data) {
+                  const responseData = error.response.data;
+                  
+                  // ApiResponse 구조인 경우
+                  if (responseData.error && responseData.error.message) {
+                    Alert.alert('오류', responseData.error.message);
+                  } else if (responseData.message) {
+                    Alert.alert('오류', responseData.message);
+                  } else {
+                    Alert.alert('오류', '파일 삭제에 실패했습니다.');
+                  }
+                } else {
+                  // 네트워크 에러나 기타 에러
+                  Alert.alert('오류', '파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+                }
               }
             }
           }
@@ -344,7 +382,8 @@ export default function FileScreen() {
         accessToken || undefined
       );
 
-      if (response && response.fileId) {
+      // ApiResponse 구조 확인
+      if (response.data.success) {
         Alert.alert('성공', '파일이 업로드되었습니다.');
         // 파일 목록 새로고침
         await loadFilesAndDirectories(selectedGroup.groupId, currentParentId);
@@ -352,11 +391,29 @@ export default function FileScreen() {
         setShowUploadModal(false);
         setSelectedFile(null);
       } else {
-        Alert.alert('오류', '파일 업로드에 실패했습니다.');
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '파일 업로드에 실패했습니다.';
+        Alert.alert('오류', errorMessage);
       }
     } catch (error: any) {
       console.error('파일 업로드 실패:', error);
-      Alert.alert('오류', '파일 업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          Alert.alert('오류', responseData.error.message);
+        } else if (responseData.message) {
+          Alert.alert('오류', responseData.message);
+        } else {
+          Alert.alert('오류', '파일 업로드에 실패했습니다.');
+        }
+      } else {
+        // 네트워크 에러나 기타 에러
+        Alert.alert('오류', '파일 업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+      }
     } finally {
       setUploadingFile(false);
     }
@@ -381,7 +438,8 @@ export default function FileScreen() {
 
       const response = await FileAPI.makeDir(dto);
       
-      if (response && response.data) {
+      // ApiResponse 구조 확인
+      if (response.data.success) {
         Alert.alert('성공', '폴더가 생성되었습니다.');
         // 폴더 목록 새로고침 - 현재 위치한 디렉토리에서 새로고침
         await loadFilesAndDirectories(selectedGroup.groupId, currentParentId);
@@ -390,12 +448,30 @@ export default function FileScreen() {
         setNewFolderName('');
         setCreatingFolder(false);
       } else {
-        Alert.alert('오류', '폴더 생성에 실패했습니다.');
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '폴더 생성에 실패했습니다.';
+        Alert.alert('오류', errorMessage);
         setCreatingFolder(false);
       }
     } catch (error: any) {
       console.error('폴더 생성 실패:', error);
-      Alert.alert('오류', '폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          Alert.alert('오류', responseData.error.message);
+        } else if (responseData.message) {
+          Alert.alert('오류', responseData.message);
+        } else {
+          Alert.alert('오류', '폴더 생성에 실패했습니다.');
+        }
+      } else {
+        // 네트워크 에러나 기타 에러
+        Alert.alert('오류', '폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+      }
       setCreatingFolder(false);
     }
   };

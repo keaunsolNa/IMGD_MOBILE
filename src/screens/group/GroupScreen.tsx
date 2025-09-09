@@ -135,50 +135,89 @@ export default function GroupScreen({ navigation }: any) {
         )
       );
       
-      await GroupAPI.addGroupUser(dto, friend.userId);
+      const response = await GroupAPI.addGroupUser(dto, friend.userId);
       
-      // 성공 후 처리 함수
-      const handleSuccess = async () => {
-        // 모달 닫기
-        handleCloseAddMemberModal();
-        
-        // 그룹 목록 새로고침
-        await loadGroups();
-        
-        // 해당 그룹을 자동으로 확장
-        if (selectedGroupId) {
-          setExpandedGroups(prev => new Set([...prev, selectedGroupId]));
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        // 성공 후 처리 함수
+        const handleSuccess = async () => {
+          // 모달 닫기
+          handleCloseAddMemberModal();
           
-          // 해당 그룹의 유저 목록도 새로고침
-          try {
-            const { data } = await GroupAPI.findGroupUserWhatInside(selectedGroupId);
-            const users = Array.isArray(data) ? data : [];
-            setGroupUsers(new Map(groupUsers.set(selectedGroupId, users)));
-          } catch (error) {
-            // 그룹 유저 목록 새로고침 실패
+          // 그룹 목록 새로고침
+          await loadGroups();
+          
+          // 해당 그룹을 자동으로 확장
+          if (selectedGroupId) {
+            setExpandedGroups(prev => new Set([...prev, selectedGroupId]));
+            
+            // 해당 그룹의 유저 목록도 새로고침
+            try {
+              const { data } = await GroupAPI.findGroupUserWhatInside(selectedGroupId);
+              const users = Array.isArray(data) ? data : [];
+              setGroupUsers(new Map(groupUsers.set(selectedGroupId, users)));
+            } catch (error) {
+              // 그룹 유저 목록 새로고침 실패
+            }
           }
+        };
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹원 추가 성공! 🎉\n${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`);
+          await handleSuccess();
+        } else {
+          // 네이티브 환경에서는 Alert.alert 사용
+          Alert.alert(
+            '그룹원 추가 성공! 🎉', 
+            `${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`,
+            [
+              {
+                text: '확인',
+                onPress: handleSuccess
+              }
+            ]
+          );
         }
-      };
+      } else {
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '그룹에 친구를 추가할 수 없습니다.';
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹원 추가 실패\n${errorMessage}`);
+        } else {
+          // 네이티브 환경에서는 Alert.alert 사용
+          Alert.alert('그룹원 추가 실패', errorMessage);
+        }
+      }
+    } catch (error: any) {
+      // 네트워크 에러나 기타 예외 발생
+      console.error('그룹원 추가 에러:', error);
+      
+      let errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          errorMessage = responseData.error.message;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        }
+      }
       
       // 웹 환경에서는 window.alert 사용
       if (typeof window !== 'undefined' && window.alert) {
-        window.alert(`그룹원 추가 성공! 🎉\n${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`);
-        await handleSuccess();
+        window.alert(`그룹원 추가 실패\n${errorMessage}`);
       } else {
         // 네이티브 환경에서는 Alert.alert 사용
-        Alert.alert(
-          '그룹원 추가 성공! 🎉', 
-          `${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`,
-          [
-            {
-              text: '확인',
-              onPress: handleSuccess
-            }
-          ]
-        );
+        Alert.alert('그룹원 추가 실패', errorMessage);
       }
-    } catch (error) {
-      // 에러 발생 시 로딩 상태 해제
+    } finally {
+      // 로딩 상태 해제
       setAvailableFriends(prev => 
         prev.map(f => 
           f.userId === friend.userId 
@@ -186,14 +225,6 @@ export default function GroupScreen({ navigation }: any) {
             : f
         )
       );
-      
-      // 웹 환경에서는 window.alert 사용
-      if (typeof window !== 'undefined' && window.alert) {
-        window.alert('그룹원 추가 실패\n그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
-      } else {
-        // 네이티브 환경에서는 Alert.alert 사용
-        Alert.alert('그룹원 추가 실패', '그룹에 친구를 추가할 수 없습니다. 다시 시도해주세요.');
-      }
     }
   };
 

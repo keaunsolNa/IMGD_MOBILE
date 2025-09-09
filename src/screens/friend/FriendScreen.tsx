@@ -191,16 +191,40 @@ export default function FriendScreen() {
     
     setAddFriendLoading(true);
     try {
-      await UserAPI.insertUserFriendTable(currentUserId, searchedUser.userId, 'F');
+      const response = await UserAPI.insertUserFriendTable(currentUserId, searchedUser.userId, 'F');
       
-      // 성공 메시지 표시
-      Alert.alert('성공', `${searchedUser.name}님을 친구로 추가했습니다!`);
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        // 성공 메시지 표시
+        Alert.alert('성공', `${searchedUser.name}님을 친구로 추가했습니다!`);
+        
+        // 모달 닫고 친구 목록 새로고침
+        handleCloseModal();
+        loadFriends();
+      } else {
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '친구 추가에 실패했습니다.';
+        Alert.alert('실패', errorMessage);
+      }
+    } catch (error: any) {
+      console.error('친구 추가 에러:', error);
       
-      // 모달 닫고 친구 목록 새로고침
-      handleCloseModal();
-      loadFriends();
-    } catch (error) {
-      Alert.alert('실패', '친구 추가에 실패했습니다.');
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          Alert.alert('실패', responseData.error.message);
+        } else if (responseData.message) {
+          Alert.alert('실패', responseData.message);
+        } else {
+          Alert.alert('실패', '친구 추가에 실패했습니다.');
+        }
+      } else {
+        // 네트워크 에러나 기타 에러
+        Alert.alert('실패', '친구 추가에 실패했습니다.');
+      }
     } finally {
       setAddFriendLoading(false);
     }
@@ -222,20 +246,43 @@ export default function FriendScreen() {
       if (confirmed) {
         setProcessingRequest(targetUserId);
         try {
-          await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
+          const response = await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
           
-          window.alert(`${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
-          
-          // 친구 목록 새로고침
-          loadFriends();
-          
-          // 친구 요청이 없으면 모달 닫기
-          if (friendRequests.length <= 1) {
-            setShowFriendRequestModal(false);
+          // ApiResponse 구조 확인
+          if (response.data.success) {
+            window.alert(`${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
+            
+            // 친구 목록 새로고침
+            loadFriends();
+            
+            // 친구 요청이 없으면 모달 닫기
+            if (friendRequests.length <= 1) {
+              setShowFriendRequestModal(false);
+            }
+          } else {
+            // API에서 에러 응답을 받은 경우
+            const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
+            window.alert(errorMessage);
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('친구 요청 처리 실패:', error);
-          window.alert(`${actionText}에 실패했습니다.`);
+          
+          // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+          if (error.response && error.response.data) {
+            const responseData = error.response.data;
+            
+            // ApiResponse 구조인 경우
+            if (responseData.error && responseData.error.message) {
+              window.alert(responseData.error.message);
+            } else if (responseData.message) {
+              window.alert(responseData.message);
+            } else {
+              window.alert(`${actionText}에 실패했습니다.`);
+            }
+          } else {
+            // 네트워크 에러나 기타 에러
+            window.alert(`${actionText}에 실패했습니다.`);
+          }
         } finally {
           setProcessingRequest(null);
         }
@@ -256,20 +303,43 @@ export default function FriendScreen() {
             onPress: async () => {
               setProcessingRequest(targetUserId);
               try {
-                await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
+                const response = await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
                 
-                Alert.alert('성공', `${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
-                
-                // 친구 목록 새로고침
-                loadFriends();
-                
-                // 친구 요청이 없으면 모달 닫기
-                if (friendRequests.length <= 1) {
-                  setShowFriendRequestModal(false);
+                // ApiResponse 구조 확인
+                if (response.data.success) {
+                  Alert.alert('성공', `${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
+                  
+                  // 친구 목록 새로고침
+                  loadFriends();
+                  
+                  // 친구 요청이 없으면 모달 닫기
+                  if (friendRequests.length <= 1) {
+                    setShowFriendRequestModal(false);
+                  }
+                } else {
+                  // API에서 에러 응답을 받은 경우
+                  const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
+                  Alert.alert('실패', errorMessage);
                 }
-              } catch (error) {
+              } catch (error: any) {
                 console.error('친구 요청 처리 실패:', error);
-                Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                
+                // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+                if (error.response && error.response.data) {
+                  const responseData = error.response.data;
+                  
+                  // ApiResponse 구조인 경우
+                  if (responseData.error && responseData.error.message) {
+                    Alert.alert('실패', responseData.error.message);
+                  } else if (responseData.message) {
+                    Alert.alert('실패', responseData.message);
+                  } else {
+                    Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                  }
+                } else {
+                  // 네트워크 에러나 기타 에러
+                  Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                }
               } finally {
                 setProcessingRequest(null);
               }
@@ -304,16 +374,39 @@ export default function FriendScreen() {
         setDeletingFriend(targetUserId);
         try {
           console.log('API 호출 시작:', { currentUserId, targetUserId });
-          await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
+          const response = await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
           
-          console.log('API 호출 성공');
-          window.alert(`${targetUserName}님을 ${actionText}했습니다.`);
-          
-          // 친구 목록 새로고침
-          loadFriends();
-        } catch (error) {
+          // ApiResponse 구조 확인
+          if (response.data.success) {
+            console.log('API 호출 성공');
+            window.alert(`${targetUserName}님을 ${actionText}했습니다.`);
+            
+            // 친구 목록 새로고침
+            loadFriends();
+          } else {
+            // API에서 에러 응답을 받은 경우
+            const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
+            window.alert(errorMessage);
+          }
+        } catch (error: any) {
           console.error('API 호출 실패:', error);
-          window.alert(`${actionText}에 실패했습니다.`);
+          
+          // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+          if (error.response && error.response.data) {
+            const responseData = error.response.data;
+            
+            // ApiResponse 구조인 경우
+            if (responseData.error && responseData.error.message) {
+              window.alert(responseData.error.message);
+            } else if (responseData.message) {
+              window.alert(responseData.message);
+            } else {
+              window.alert(`${actionText}에 실패했습니다.`);
+            }
+          } else {
+            // 네트워크 에러나 기타 에러
+            window.alert(`${actionText}에 실패했습니다.`);
+          }
         } finally {
           setDeletingFriend(null);
         }
@@ -336,16 +429,39 @@ export default function FriendScreen() {
               setDeletingFriend(targetUserId);
               try {
                 console.log('API 호출 시작:', { currentUserId, targetUserId });
-                await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
+                const response = await UserAPI.deleteUserFriendTable(currentUserId, targetUserId);
                 
-                console.log('API 호출 성공');
-                Alert.alert('성공', `${targetUserName}님을 ${actionText}했습니다.`);
-                
-                // 친구 목록 새로고침
-                loadFriends();
-              } catch (error) {
+                // ApiResponse 구조 확인
+                if (response.data.success) {
+                  console.log('API 호출 성공');
+                  Alert.alert('성공', `${targetUserName}님을 ${actionText}했습니다.`);
+                  
+                  // 친구 목록 새로고침
+                  loadFriends();
+                } else {
+                  // API에서 에러 응답을 받은 경우
+                  const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
+                  Alert.alert('실패', errorMessage);
+                }
+              } catch (error: any) {
                 console.error('API 호출 실패:', error);
-                Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                
+                // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+                if (error.response && error.response.data) {
+                  const responseData = error.response.data;
+                  
+                  // ApiResponse 구조인 경우
+                  if (responseData.error && responseData.error.message) {
+                    Alert.alert('실패', responseData.error.message);
+                  } else if (responseData.message) {
+                    Alert.alert('실패', responseData.message);
+                  } else {
+                    Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                  }
+                } else {
+                  // 네트워크 에러나 기타 에러
+                  Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                }
               } finally {
                 setDeletingFriend(null);
               }
