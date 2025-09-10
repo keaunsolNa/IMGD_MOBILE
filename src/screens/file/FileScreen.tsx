@@ -301,6 +301,141 @@ export default function FileScreen() {
     }
   };
 
+  // 폴더 삭제
+  const handleDeleteFolder = async (folder: FileTableDTO) => {
+    if (!folder.fileId || !selectedGroup?.groupId) {
+      Alert.alert('오류', '폴더 정보가 올바르지 않습니다.');
+      return;
+    }
+
+    // 웹 환경에서는 window.confirm 사용
+    if (typeof window !== 'undefined' && window.confirm) {
+      const confirmed = window.confirm(`"${folder.fileNm}" 폴더를 삭제하시겠습니까?\n하위 파일과 폴더도 모두 삭제됩니다.`);
+      if (confirmed) {
+        try {
+          const response = await FileAPI.deleteDir(folder.fileId!);
+          
+          // ApiResponse 구조 확인
+          if (response.data.success) {
+            window.alert('폴더가 삭제되었습니다.');
+            
+            // 삭제된 폴더의 parentId로 이동
+            const parentId = response.data.data.parentId;
+            if (parentId) {
+              setCurrentParentId(parentId);
+              // 디렉터리 스택을 parentId에 맞게 조정
+              if (parentId === 2) {
+                // 루트 디렉터리로 이동
+                setDirectoryStack([]);
+                setCurrentDirectoryName(selectedGroup.groupNm);
+              } else {
+                // 상위 디렉터리로 이동
+                const newStack = directoryStack.slice(0, -1);
+                setDirectoryStack(newStack);
+                setCurrentDirectoryName(newStack.length > 0 ? newStack[newStack.length - 1].name : selectedGroup.groupNm);
+              }
+              
+              // 파일 목록 새로고침
+              await loadFilesAndDirectories(selectedGroup.groupId, parentId);
+            }
+          } else {
+            // API에서 에러 응답을 받은 경우
+            const errorMessage = response.data.error?.message || '폴더 삭제에 실패했습니다.';
+            window.alert(errorMessage);
+          }
+        } catch (error: any) {
+          console.error('폴더 삭제 실패:', error);
+          
+          // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+          if (error.response && error.response.data) {
+            const responseData = error.response.data;
+            
+            // ApiResponse 구조인 경우
+            if (responseData.error && responseData.error.message) {
+              window.alert(responseData.error.message);
+            } else if (responseData.message) {
+              window.alert(responseData.message);
+            } else {
+              window.alert('폴더 삭제에 실패했습니다.');
+            }
+          } else {
+            // 네트워크 에러나 기타 에러
+            window.alert('폴더 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+          }
+        }
+      }
+    } else {
+      // 네이티브 환경에서는 Alert.alert 사용
+      Alert.alert(
+        '폴더 삭제',
+        `"${folder.fileNm}" 폴더를 삭제하시겠습니까?\n하위 파일과 폴더도 모두 삭제됩니다.`,
+        [
+          {
+            text: '취소',
+            style: 'cancel'
+          },
+          {
+            text: '삭제',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                const response = await FileAPI.deleteDir(folder.fileId!);
+                
+                // ApiResponse 구조 확인
+                if (response.data.success) {
+                  Alert.alert('성공', '폴더가 삭제되었습니다.');
+                  
+                  // 삭제된 폴더의 parentId로 이동
+                  const parentId = response.data.data.parentId;
+                  if (parentId) {
+                    setCurrentParentId(parentId);
+                    // 디렉터리 스택을 parentId에 맞게 조정
+                    if (parentId === 2) {
+                      // 루트 디렉터리로 이동
+                      setDirectoryStack([]);
+                      setCurrentDirectoryName(selectedGroup.groupNm);
+                    } else {
+                      // 상위 디렉터리로 이동
+                      const newStack = directoryStack.slice(0, -1);
+                      setDirectoryStack(newStack);
+                      setCurrentDirectoryName(newStack.length > 0 ? newStack[newStack.length - 1].name : selectedGroup.groupNm);
+                    }
+                    
+                    // 파일 목록 새로고침
+                    await loadFilesAndDirectories(selectedGroup.groupId!, parentId);
+                  }
+                } else {
+                  // API에서 에러 응답을 받은 경우
+                  const errorMessage = response.data.error?.message || '폴더 삭제에 실패했습니다.';
+                  Alert.alert('오류', errorMessage);
+                }
+              } catch (error: any) {
+                console.error('폴더 삭제 실패:', error);
+                
+                // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+                if (error.response && error.response.data) {
+                  const responseData = error.response.data;
+                  
+                  // ApiResponse 구조인 경우
+                  if (responseData.error && responseData.error.message) {
+                    Alert.alert('오류', responseData.error.message);
+                  } else if (responseData.message) {
+                    Alert.alert('오류', responseData.message);
+                  } else {
+                    Alert.alert('오류', '폴더 삭제에 실패했습니다.');
+                  }
+                } else {
+                  // 네트워크 에러나 기타 에러
+                  Alert.alert('오류', '폴더 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+                }
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   // 파일 선택
   const handleSelectFile = async () => {
     try {
@@ -382,8 +517,8 @@ export default function FileScreen() {
         accessToken || undefined
       );
 
-      // ApiResponse 구조 확인
-      if (response.data.success) {
+      // ApiResponse 구조 확인 (fetch API 사용으로 직접 응답)
+      if (response.success) {
         Alert.alert('성공', '파일이 업로드되었습니다.');
         // 파일 목록 새로고침
         await loadFilesAndDirectories(selectedGroup.groupId, currentParentId);
@@ -392,21 +527,19 @@ export default function FileScreen() {
         setSelectedFile(null);
       } else {
         // API에서 에러 응답을 받은 경우
-        const errorMessage = response.data.error?.message || '파일 업로드에 실패했습니다.';
+        const errorMessage = response.error?.message || '파일 업로드에 실패했습니다.';
         Alert.alert('오류', errorMessage);
       }
     } catch (error: any) {
       console.error('파일 업로드 실패:', error);
       
-      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
-      if (error.response && error.response.data) {
-        const responseData = error.response.data;
-        
+      // fetch API 에러 처리
+      if (error && typeof error === 'object') {
         // ApiResponse 구조인 경우
-        if (responseData.error && responseData.error.message) {
-          Alert.alert('오류', responseData.error.message);
-        } else if (responseData.message) {
-          Alert.alert('오류', responseData.message);
+        if (error.error && error.error.message) {
+          Alert.alert('오류', error.error.message);
+        } else if (error.message) {
+          Alert.alert('오류', error.message);
         } else {
           Alert.alert('오류', '파일 업로드에 실패했습니다.');
         }
@@ -782,6 +915,18 @@ export default function FileScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
+                
+                {/* 폴더 삭제 버튼 (폴더인 경우에만 표시) */}
+                {item.type === 'DIR' && (
+                  <View style={styles.deleteButtonContainer}>
+                    <Pressable
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteFolder(item)}
+                    >
+                      <Text style={styles.deleteButtonText}>🗑️</Text>
+                    </Pressable>
+                  </View>
+                )}
                 {item.type === 'FILE' && (
                   <View style={styles.deleteButtonContainer}>
                     <Pressable 

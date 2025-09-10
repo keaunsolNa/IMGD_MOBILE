@@ -295,4 +295,7 @@ export const FileAPI = {
 
   // 파일 삭제
   deleteFile: (fileId: number) => api.delete(`/api/file/deleteFile`, { params: { fileId } }),
+
+  // 폴더 삭제
+  deleteDir: (fileId: number) => api.delete(`/api/file/deleteDir`, { params: { fileId } }),
 };
