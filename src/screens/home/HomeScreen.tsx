@@ -18,6 +18,9 @@ export default function HomeScreen({ navigation }: any) {
         <View style={styles.buttonContainer}>
           <Button title="Friend" onPress={() => navigation.navigate('Friend')} />
         </View>
+        <View style={styles.buttonContainer}>
+          <Button title="Community" onPress={() => navigation.navigate('Community')} />
+        </View>
       </View>
 
       {/* Main Content */}

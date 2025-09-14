@@ -10,6 +10,8 @@ import MakeGroupScreen from '../screens/group/MakeGroupScreen';
 import GroupUserScreen from '../screens/group/GroupUserScreen';
 import MyPageScreen from '../screens/myPage/MyPageScreen';
 import FriendScreen from '../screens/friend/FriendScreen';
+import CommunityScreen from '../screens/community/CommunityScreen';
+import CreateArticleScreen from '../screens/community/CreateArticleScreen';
 import HeaderButtons from '../components/HeaderButtons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
@@ -35,6 +37,8 @@ export default function RootNavigator() {
                         <Stack.Screen name="File" component={FileScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="MyPage" component={MyPageScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Friend" component={FriendScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="Community" component={CommunityScreen} options={{ title: 'IMGD' }} />
+                        <Stack.Screen name="CreateArticle" component={CreateArticleScreen} options={{ title: '글쓰기' }} />
                     </>
                 ) : (
                   <>

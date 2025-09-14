@@ -29,3 +29,56 @@ export type MakeFileDTO = {
   fileName: string;
   originalFile: any;
 };
+
+// 커뮤니티 관련 DTO
+export type ArticleDTO = {
+  id?: number;
+  title: string;
+  content: string;
+  author: string;
+  authorId: string;
+  createdAt?: string;
+  updatedAt?: string;
+  tags: string[];
+  viewCount?: number;
+  likeCount?: number;
+  commentCount?: number;
+};
+
+export type CreateArticleDTO = {
+  title: string;
+  content: string;
+  tags: string[];
+};
+
+export type UpdateArticleDTO = {
+  title?: string;
+  content?: string;
+  tags?: string[];
+};
+
+export type TagDTO = {
+  id?: number;
+  name: string;
+  color: string;
+  articleCount?: number;
+};
+
+export type CreateTagDTO = {
+  name: string;
+  color: string;
+};
+
+export type CommentDTO = {
+  id?: number;
+  content: string;
+  author: string;
+  authorId: string;
+  createdAt?: string;
+  articleId: number;
+};
+
+export type CreateCommentDTO = {
+  content: string;
+  articleId: number;
+};
