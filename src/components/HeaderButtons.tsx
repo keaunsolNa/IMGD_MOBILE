@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, TouchableOpacity, Image, Modal, Text, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, Image, Modal, Text, ScrollView } from 'react-native';
+import { showErrorAlert } from '@/utils/alert';
 import { useNavigation } from '@react-navigation/native';
 import { logout } from '@/services/auth';
 import { styles } from '@/styles/components/HeaderButtons';
@@ -94,7 +95,7 @@ export default function HeaderButtons() {
   // 친구 요청 수락
   const handleAcceptFriendRequest = async (friendRequest: UserTableDTO) => {
     if (!currentUserId) {
-      Alert.alert('오류', '사용자 ID를 찾을 수 없습니다.');
+      showErrorAlert('사용자 ID를 찾을 수 없습니다.');
       return;
     }
     
@@ -122,14 +123,14 @@ export default function HeaderButtons() {
       }, 2000);
       
     } catch (error) {
-      Alert.alert('실패', '친구 요청 수락에 실패했습니다.');
+      showErrorAlert('친구 요청 수락에 실패했습니다.');
     }
   };
 
   // 친구 요청 거절
   const handleRejectFriendRequest = async (friendRequest: UserTableDTO) => {
     if (!currentUserId) {
-      Alert.alert('오류', '사용자 ID를 찾을 수 없습니다.');
+      showErrorAlert('사용자 ID를 찾을 수 없습니다.');
       return;
     }
     
@@ -152,7 +153,7 @@ export default function HeaderButtons() {
       }, 2000);
       
     } catch (error) {
-      Alert.alert('실패', '친구 요청 거절에 실패했습니다.');
+      showErrorAlert('친구 요청 거절에 실패했습니다.');
     }
   };
 

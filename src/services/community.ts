@@ -1,5 +1,6 @@
 import { api } from './api';
 import { ApiResponse } from '@/types';
+import { ArticleSearch } from '@/types/dto';
 
 // 커뮤니티 관련 타입 정의
 export interface Article {
@@ -77,18 +78,30 @@ export interface ArticleWithTags {
   userNm?: string;
   like?: number | null;
   watch?: number | null;
+  likeCnt?: number | null;
+  watchCnt?: number | null;
+  commentCnt?: number | null;
+  comments?: ArticleWithTags[];
 }
 
 // Article API (실제 백엔드 API 사용)
 export const ArticleAPI = {
   // 모든 게시글 조회 (백엔드 API 사용)
-  getArticles: () => {
-    return api.get<ArticleWithTags[]>('/api/article/findAllArticle');
+  getArticles: (search?: ArticleSearch) => {
+    const params = new URLSearchParams();
+    if (search?.title) params.append('title', search.title);
+    if (search?.article) params.append('article', search.article);
+    if (search?.userNm) params.append('userNm', search.userNm);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/api/article/findAllArticle?${queryString}` : '/api/article/findAllArticle';
+    
+    return api.get<ArticleWithTags[]>(url);
   },
 
   // 게시글 상세 조회
   getArticle: (id: number) => 
-    api.get<ArticleWithTags>(`/api/article/${id}`),
+    api.get<ArticleWithTags>(`/api/article/findArticleById?articleId=${id}`),
 
   // 게시글 생성
   createArticle: (data: ArticleWithTags) => 
@@ -102,13 +115,14 @@ export const ArticleAPI = {
   deleteArticle: (id: number) => 
     api.delete<ApiResponse<void>>(`/api/article/${id}`),
 
-  // 게시글 좋아요/취소
-  toggleLike: (id: number) => 
-    api.post<ApiResponse<{ liked: boolean; likeCount: number }>>(`/api/article/${id}/like`),
+  // 게시글 좋아요
+  likeArticle: (articleId: number) => 
+    api.put<ApiResponse<ArticleWithTags>>('/api/article/likeArticle', articleId),
 
-  // 게시글 조회수 증가
-  incrementViewCount: (id: number) => 
-    api.post<ApiResponse<void>>(`/api/article/${id}/view`)
+  // 댓글 추가
+  insertComment: (articleId: number, commentData: ArticleWithTags) => 
+    api.post<ApiResponse<ArticleWithTags>>(`/api/article/insertComment?articleId=${articleId}`, commentData),
+
 };
 
 // Tag API (실제 백엔드 API 사용)
@@ -143,8 +157,8 @@ export const CommunityAPI = {
   createArticle: ArticleAPI.createArticle,
   updateArticle: ArticleAPI.updateArticle,
   deleteArticle: ArticleAPI.deleteArticle,
-  toggleLike: ArticleAPI.toggleLike,
-  incrementViewCount: ArticleAPI.incrementViewCount,
+  likeArticle: ArticleAPI.likeArticle,
+  insertComment: ArticleAPI.insertComment,
   getComments: CommentAPI.getComments,
   createComment: CommentAPI.createComment,
 };

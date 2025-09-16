@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image } from 'react-native';
+import { showErrorAlert, showSuccessAlert } from '@/utils/alert';
 import * as ImagePicker from 'expo-image-picker';
 import { UserAPI, getProfileImageUrl } from '@/services/api';
 import { styles } from '@/styles/screens/group/GroupUserScreen';
@@ -114,7 +115,7 @@ export default function GroupUserScreen({ route }: any) {
     
     // 현재 로그인한 사용자와 대상 사용자가 일치하는지 확인
     if (user.userId !== currentUserId) {
-      Alert.alert('권한 없음', '다른 사용자의 프로필은 수정할 수 없습니다.');
+      showErrorAlert('다른 사용자의 프로필은 수정할 수 없습니다.');
       return;
     }
 
@@ -122,7 +123,7 @@ export default function GroupUserScreen({ route }: any) {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다.');
+        showErrorAlert('갤러리 접근 권한이 필요합니다.');
         return;
       }
 
@@ -146,15 +147,15 @@ export default function GroupUserScreen({ route }: any) {
         );
 
         if (response) {
-          Alert.alert('성공', '프로필 이미지가 업로드되었습니다.');
+          showSuccessAlert('프로필 이미지가 업로드되었습니다.');
           loadUserInfo();
         } else {
-          Alert.alert('실패', '프로필 이미지 업로드에 실패했습니다.');
+          showErrorAlert('프로필 이미지 업로드에 실패했습니다.');
         }
       } else {
       }
     } catch (error) {
-      Alert.alert('오류', '프로필 이미지 업로드 중 오류가 발생했습니다.');
+      showErrorAlert('프로필 이미지 업로드 중 오류가 발생했습니다.');
     }
   };
 

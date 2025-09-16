@@ -12,6 +12,7 @@ import MyPageScreen from '../screens/myPage/MyPageScreen';
 import FriendScreen from '../screens/friend/FriendScreen';
 import CommunityScreen from '../screens/community/CommunityScreen';
 import CreateArticleScreen from '../screens/community/CreateArticleScreen';
+import ArticleDetailScreen from '../screens/community/ArticleDetailScreen';
 import HeaderButtons from '../components/HeaderButtons';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
@@ -39,6 +40,7 @@ export default function RootNavigator() {
                         <Stack.Screen name="Friend" component={FriendScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="Community" component={CommunityScreen} options={{ title: 'IMGD' }} />
                         <Stack.Screen name="CreateArticle" component={CreateArticleScreen} options={{ title: '글쓰기' }} />
+                        <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={{ title: '게시글' }} />
                     </>
                 ) : (
                   <>

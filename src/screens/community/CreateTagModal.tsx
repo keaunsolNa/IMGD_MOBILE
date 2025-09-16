@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   Modal,
-  Alert,
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
 import { styles } from '@/styles/screens/community/CreateTagModal';
 import { CommunityAPI } from '@/services/community';
+import { showErrorAlert, showSuccessAlert } from '@/utils/alert';
 
 interface CreateTagModalProps {
   visible: boolean;
@@ -31,7 +31,7 @@ export default function CreateTagModal({ visible, onClose, onTagCreated }: Creat
 
   const handleSubmit = async () => {
     if (!tagName.trim()) {
-      Alert.alert('오류', '태그 이름을 입력해주세요.');
+      showErrorAlert('태그 이름을 입력해주세요.');
       return;
     }
 
@@ -45,19 +45,20 @@ export default function CreateTagModal({ visible, onClose, onTagCreated }: Creat
       
       // ApiResponse<List<Tag>> 구조에 맞춰 응답 처리
       if (response.data?.success) {
-        Alert.alert('성공', '태그가 생성되었습니다.');
-        setTagName('');
-        setTagDescription('');
-        setTagColor('#007AFF');
-        onClose();
-        // 모달을 닫은 후 데이터 새로고침
-        onTagCreated();
+        showSuccessAlert('태그가 생성되었습니다.', () => {
+          setTagName('');
+          setTagDescription('');
+          setTagColor('#007AFF');
+          onClose();
+          // 모달을 닫은 후 데이터 새로고침
+          onTagCreated();
+        });
       } else {
-        Alert.alert('오류', response.data?.message || '태그 생성에 실패했습니다.');
+        showErrorAlert(response.data?.error?.message || '태그 생성에 실패했습니다.');
       }
     } catch (error) {
       console.error('태그 생성 실패:', error);
-      Alert.alert('오류', '태그 생성에 실패했습니다.');
+      showErrorAlert('태그 생성에 실패했습니다.');
     } finally {
       setLoading(false);
     }

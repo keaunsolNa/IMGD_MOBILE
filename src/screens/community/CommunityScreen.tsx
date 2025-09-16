@@ -1,20 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { styles } from '@/styles/screens/community/CommunityScreen';
-import { CommunityAPI, ArticleWithTags, Tag } from '@/services/community';
-import CreateTagModal from './CreateTagModal';
+import { CommunityAPI, ArticleWithTags } from '@/services/community';
+import { showErrorAlert } from '@/utils/alert';
+import TextField from '@/components/TextField';
+import { ArticleSearch } from '@/types/dto';
 
-export default function CommunityScreen({ navigation }: any) {
+export default function CommunityScreen({ navigation, route }: any) {
   const [articles, setArticles] = useState<ArticleWithTags[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [selectedTag, setSelectedTag] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showTagModal, setShowTagModal] = useState(false);
+  
+  // 검색 조건 상태
+  const [searchConditions, setSearchConditions] = useState<ArticleSearch>({
+    title: '',
+    article: '',
+    userNm: ''
+  });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      // 업데이트된 게시글 정보가 있으면 해당 게시글만 업데이트
+      if (route.params?.updatedArticle) {
+        const updatedArticle = route.params.updatedArticle;
+        setArticles(prevArticles => 
+          prevArticles.map(article => 
+            article.articleId === updatedArticle.articleId ? updatedArticle : article
+          )
+        );
+        // 파라미터 초기화
+        navigation.setParams({ updatedArticle: null, refreshNeeded: false });
+      } else {
+        loadData();
+      }
+    }, [route.params?.updatedArticle])
+  );
 
   const loadData = async () => {
     try {
@@ -22,23 +43,16 @@ export default function CommunityScreen({ navigation }: any) {
       console.log('데이터 로딩 시작...');
       
       try {
-        const [articlesResponse, tagsResponse] = await Promise.all([
-          CommunityAPI.getArticles(),
-          CommunityAPI.getTags()
-        ]);
+        const articlesResponse = await CommunityAPI.getArticles(searchConditions);
         
         console.log('Articles Response:', articlesResponse);
-        console.log('Tags Response:', tagsResponse);
         
         // 백엔드 API 응답 구조에 맞춰 데이터 설정
         const articles = articlesResponse.data || [];
-        const tags = tagsResponse.data || [];
         
         console.log('Parsed Articles:', articles);
-        console.log('Parsed Tags:', tags);
         
         setArticles(articles);
-        setTags(tags);
       } catch (apiError) {
         console.log('API 호출 실패, 목업 데이터 사용:', apiError);
         
@@ -90,59 +104,11 @@ export default function CommunityScreen({ navigation }: any) {
           }
         ];
 
-        const mockTags: Tag[] = [
-          { 
-            tagId: 1, 
-            name: "React Native", 
-            color: "#61DAFB", 
-            description: "React Native 관련",
-            regDtm: "2024년 01월 15일",
-            regId: "user1",
-            modDtm: "2024년 01월 15일",
-            modId: "user1",
-            articleCount: 5 
-          },
-          { 
-            tagId: 2, 
-            name: "TypeScript", 
-            color: "#3178C6", 
-            description: "TypeScript 관련",
-            regDtm: "2024년 01월 14일",
-            regId: "user2",
-            modDtm: "2024년 01월 14일",
-            modId: "user2",
-            articleCount: 3 
-          },
-          { 
-            tagId: 3, 
-            name: "모바일", 
-            color: "#FF6B6B", 
-            description: "모바일 개발 관련",
-            regDtm: "2024년 01월 13일",
-            regId: "user3",
-            modDtm: "2024년 01월 13일",
-            modId: "user3",
-            articleCount: 8 
-          },
-          { 
-            tagId: 4, 
-            name: "개발", 
-            color: "#4ECDC4", 
-            description: "일반 개발 관련",
-            regDtm: "2024년 01월 12일",
-            regId: "user4",
-            modDtm: "2024년 01월 12일",
-            modId: "user4",
-            articleCount: 12 
-          }
-        ];
-
         setArticles(mockArticles);
-        setTags(mockTags);
       }
     } catch (error) {
       console.error('데이터 로딩 실패:', error);
-      Alert.alert('오류', '데이터를 불러오는데 실패했습니다.');
+      showErrorAlert('데이터를 불러오는데 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -154,19 +120,6 @@ export default function CommunityScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
-  const handleTagPress = (tagId: number) => {
-    setSelectedTag(selectedTag === tagId ? null : tagId);
-    // 태그 필터링 로직 (클라이언트 사이드)
-    if (selectedTag === tagId) {
-      loadData(); // 모든 게시글 표시
-    } else {
-      const filteredArticles = articles.filter(article => 
-        article.tagList?.some(tag => tag.tagId === tagId) || false
-      );
-      setArticles(filteredArticles);
-    }
-  };
-
   const handleArticlePress = (article: ArticleWithTags) => {
     navigation.navigate('ArticleDetail', { article });
   };
@@ -175,47 +128,31 @@ export default function CommunityScreen({ navigation }: any) {
     navigation.navigate('CreateArticle', { onArticleCreated: loadData });
   };
 
-  const handleCreateTag = () => {
-    setShowTagModal(true);
+  // 검색 조건 변경 핸들러
+  const handleSearchChange = (field: keyof ArticleSearch, value: string) => {
+    setSearchConditions(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
-  const handleTagCreated = async () => {
-    // 태그 생성 후 데이터 새로고침
-    await loadData();
+  // 검색 실행
+  const handleSearch = () => {
+    loadData();
   };
 
-  const handleLike = async (articleId: number | undefined) => {
-    if (!articleId) return;
-    
-    try {
-      await CommunityAPI.toggleLike(articleId);
-      // 좋아요 수는 백엔드에서 관리되므로 새로고침
-      loadData();
-    } catch (error) {
-      Alert.alert('오류', '좋아요 처리에 실패했습니다.');
-    }
+  // 검색 초기화
+  const handleSearchReset = () => {
+    setSearchConditions({
+      title: '',
+      article: '',
+      userNm: ''
+    });
+    // 초기화 후 바로 검색 실행
+    setTimeout(() => loadData(), 0);
   };
 
-  const renderTag = ({ item }: { item: Tag }) => {
-    if (!item || !item.tagId) return null;
-    
-    return (
-      <TouchableOpacity
-        style={[
-          styles.tagButton,
-          selectedTag === item.tagId && styles.selectedTagButton
-        ]}
-        onPress={() => handleTagPress(item.tagId)}
-      >
-        <Text style={[
-          styles.tagText,
-          selectedTag === item.tagId && styles.selectedTagText
-        ]}>
-          {item.name || 'Unknown Tag'}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+
 
   const renderArticle = ({ item }: { item: ArticleWithTags }) => {
     if (!item || !item.articleId) return null;
@@ -243,14 +180,11 @@ export default function CommunityScreen({ navigation }: any) {
             ))}
           </View>
           <View style={styles.articleStats}>
-            <TouchableOpacity 
-              style={styles.likeButton}
-              onPress={() => handleLike(item.articleId)}
-            >
-              <Text style={styles.articleStat}>❤️ 0</Text>
-            </TouchableOpacity>
-            <Text style={styles.articleStat}>👁 0</Text>
-            <Text style={styles.articleStat}>💬 0</Text>
+            <View style={styles.likeButton}>
+              <Text style={styles.articleStat}>❤️ {item.likeCnt || 0}</Text>
+            </View>
+            <Text style={styles.articleStat}>👁 {item.watchCnt || 0}</Text>
+            <Text style={styles.articleStat}>💬 {item.commentCnt || 0}</Text>
             <Text style={styles.articleDate}>
               {item.regDtm || '날짜 없음'}
             </Text>
@@ -274,25 +208,44 @@ export default function CommunityScreen({ navigation }: any) {
             <Text style={styles.createButtonText}>+ 글쓰기</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* 태그 필터 */}
-        <View style={styles.tagContainer}>
-          <FlatList
-            data={tags}
-            renderItem={renderTag}
-            keyExtractor={(item, index) => item?.tagId?.toString() || `tag-${index}`}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tagList}
-            ListFooterComponent={
-              <TouchableOpacity
-                style={styles.addTagButton}
-                onPress={handleCreateTag}
-              >
-                <Text style={styles.addTagText}>+ 태그 추가</Text>
-              </TouchableOpacity>
-            }
+      </View>
+
+      {/* 검색 영역 */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchRow}>
+          <Text style={styles.searchLabel}>제목:</Text>
+          <TextField
+            value={searchConditions.title}
+            onChangeText={(value) => handleSearchChange('title', value)}
+            placeholder="제목으로 검색"
+            style={styles.searchInput}
           />
+        </View>
+        <View style={styles.searchRow}>
+          <Text style={styles.searchLabel}>본문:</Text>
+          <TextField
+            value={searchConditions.article}
+            onChangeText={(value) => handleSearchChange('article', value)}
+            placeholder="본문으로 검색"
+            style={styles.searchInput}
+          />
+        </View>
+        <View style={styles.searchRow}>
+          <Text style={styles.searchLabel}>작성자:</Text>
+          <TextField
+            value={searchConditions.userNm}
+            onChangeText={(value) => handleSearchChange('userNm', value)}
+            placeholder="작성자로 검색"
+            style={styles.searchInput}
+          />
+        </View>
+        <View style={styles.searchButtons}>
+          <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+            <Text style={styles.searchButtonText}>검색</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.resetButton} onPress={handleSearchReset}>
+            <Text style={styles.resetButtonText}>초기화</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -312,13 +265,6 @@ export default function CommunityScreen({ navigation }: any) {
             </Text>
           </View>
         }
-      />
-
-      {/* 태그 생성 모달 */}
-      <CreateTagModal
-        visible={showTagModal}
-        onClose={() => setShowTagModal(false)}
-        onTagCreated={handleTagCreated}
       />
     </View>
   );

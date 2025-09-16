@@ -116,6 +116,21 @@ export const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  createTagButton: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  createTagText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
   tagsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, Alert, Modal, TextInput, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, Modal, TextInput, Pressable } from 'react-native';
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { UserAPI, getProfileImageUrl } from '@/services/api';
 import { styles } from '@/styles/screens/friend/FriendScreen';
@@ -47,7 +48,7 @@ export default function FriendScreen() {
       setPendingFriends(pendingResponse.data || []);
       setRejectedFriends(rejectedResponse.data || []);
           } catch (error) {
-        Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
+        showErrorAlert('친구 목록을 불러올 수 없습니다.');
       } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ export default function FriendScreen() {
   // 사용자 검색
   const handleSearchUser = async () => {
     if (!searchUserId.trim()) {
-      Alert.alert('입력 오류', '사용자 ID를 입력해주세요.');
+      showErrorAlert('사용자 ID를 입력해주세요.');
       return;
     }
 
@@ -196,7 +197,7 @@ export default function FriendScreen() {
       // ApiResponse 구조 확인
       if (response.data.success) {
         // 성공 메시지 표시
-        Alert.alert('성공', `${searchedUser.name}님을 친구로 추가했습니다!`);
+        showSuccessAlert(`${searchedUser.name}님을 친구로 추가했습니다!`);
         
         // 모달 닫고 친구 목록 새로고침
         handleCloseModal();
@@ -204,7 +205,7 @@ export default function FriendScreen() {
       } else {
         // API에서 에러 응답을 받은 경우
         const errorMessage = response.data.error?.message || '친구 추가에 실패했습니다.';
-        Alert.alert('실패', errorMessage);
+        showErrorAlert(errorMessage);
       }
     } catch (error: any) {
       console.error('친구 추가 에러:', error);
@@ -215,15 +216,15 @@ export default function FriendScreen() {
         
         // ApiResponse 구조인 경우
         if (responseData.error && responseData.error.message) {
-          Alert.alert('실패', responseData.error.message);
+          showErrorAlert(responseData.error.message);
         } else if (responseData.message) {
-          Alert.alert('실패', responseData.message);
+          showErrorAlert(responseData.message);
         } else {
-          Alert.alert('실패', '친구 추가에 실패했습니다.');
+          showErrorAlert('친구 추가에 실패했습니다.');
         }
       } else {
         // 네트워크 에러나 기타 에러
-        Alert.alert('실패', '친구 추가에 실패했습니다.');
+        showErrorAlert('친구 추가에 실패했습니다.');
       }
     } finally {
       setAddFriendLoading(false);
@@ -289,7 +290,7 @@ export default function FriendScreen() {
       }
     } else {
       // 네이티브 환경에서는 Alert.alert 사용
-      Alert.alert(
+      showConfirmAlert(
         `친구 요청 ${actionText}`,
         confirmMessage,
         [
@@ -307,7 +308,7 @@ export default function FriendScreen() {
                 
                 // ApiResponse 구조 확인
                 if (response.data.success) {
-                  Alert.alert('성공', `${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
+                  showSuccessAlert(`${targetUserName}님의 친구 요청을 ${actionText}했습니다.`);
                   
                   // 친구 목록 새로고침
                   loadFriends();
@@ -319,7 +320,7 @@ export default function FriendScreen() {
                 } else {
                   // API에서 에러 응답을 받은 경우
                   const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
-                  Alert.alert('실패', errorMessage);
+                  showErrorAlert(errorMessage);
                 }
               } catch (error: any) {
                 console.error('친구 요청 처리 실패:', error);
@@ -330,15 +331,15 @@ export default function FriendScreen() {
                   
                   // ApiResponse 구조인 경우
                   if (responseData.error && responseData.error.message) {
-                    Alert.alert('실패', responseData.error.message);
+                    showErrorAlert(responseData.error.message);
                   } else if (responseData.message) {
-                    Alert.alert('실패', responseData.message);
+                    showErrorAlert(responseData.message);
                   } else {
-                    Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                    showErrorAlert(`${actionText}에 실패했습니다.`);
                   }
                 } else {
                   // 네트워크 에러나 기타 에러
-                  Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                  showErrorAlert(`${actionText}에 실패했습니다.`);
                 }
               } finally {
                 setProcessingRequest(null);
@@ -413,7 +414,7 @@ export default function FriendScreen() {
       }
     } else {
       // 네이티브 환경에서는 Alert.alert 사용
-      Alert.alert(
+      showConfirmAlert(
         `${actionText} 확인`,
         confirmMessage,
         [
@@ -434,14 +435,14 @@ export default function FriendScreen() {
                 // ApiResponse 구조 확인
                 if (response.data.success) {
                   console.log('API 호출 성공');
-                  Alert.alert('성공', `${targetUserName}님을 ${actionText}했습니다.`);
+                  showSuccessAlert(`${targetUserName}님을 ${actionText}했습니다.`);
                   
                   // 친구 목록 새로고침
                   loadFriends();
                 } else {
                   // API에서 에러 응답을 받은 경우
                   const errorMessage = response.data.error?.message || `${actionText}에 실패했습니다.`;
-                  Alert.alert('실패', errorMessage);
+                  showErrorAlert(errorMessage);
                 }
               } catch (error: any) {
                 console.error('API 호출 실패:', error);
@@ -452,15 +453,15 @@ export default function FriendScreen() {
                   
                   // ApiResponse 구조인 경우
                   if (responseData.error && responseData.error.message) {
-                    Alert.alert('실패', responseData.error.message);
+                    showErrorAlert(responseData.error.message);
                   } else if (responseData.message) {
-                    Alert.alert('실패', responseData.message);
+                    showErrorAlert(responseData.message);
                   } else {
-                    Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                    showErrorAlert(`${actionText}에 실패했습니다.`);
                   }
                 } else {
                   // 네트워크 에러나 기타 에러
-                  Alert.alert('실패', `${actionText}에 실패했습니다.`);
+                  showErrorAlert(`${actionText}에 실패했습니다.`);
                 }
               } finally {
                 setDeletingFriend(null);

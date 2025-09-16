@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, Modal, Alert } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, Modal } from 'react-native';
+import { showErrorAlert, showSuccessAlert } from '@/utils/alert';
 import Button from '../../components/Button';
 import { GroupAPI, UserAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
@@ -100,7 +101,7 @@ export default function GroupScreen({ navigation }: any) {
       const { data } = await UserAPI.findFriendEachOtherAndNotInGroup(subject, groupId);
       setAvailableFriends(Array.isArray(data) ? data : []);
     } catch (error) {
-      Alert.alert('오류', '친구 목록을 불러올 수 없습니다.');
+      showErrorAlert('친구 목록을 불러올 수 없습니다.');
       setAvailableFriends([]);
     } finally {
       setLoadingFriends(false);
@@ -167,17 +168,8 @@ export default function GroupScreen({ navigation }: any) {
           window.alert(`그룹원 추가 성공! 🎉\n${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`);
           await handleSuccess();
         } else {
-          // 네이티브 환경에서는 Alert.alert 사용
-          Alert.alert(
-            '그룹원 추가 성공! 🎉', 
-            `${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`,
-            [
-              {
-                text: '확인',
-                onPress: handleSuccess
-              }
-            ]
-          );
+          // 네이티브 환경에서는 showSuccessAlert 사용
+          showSuccessAlert(`${friend.name}님이 "${selectedGroupName}" 그룹에 성공적으로 추가되었습니다.`, handleSuccess);
         }
       } else {
         // API에서 에러 응답을 받은 경우
@@ -188,7 +180,7 @@ export default function GroupScreen({ navigation }: any) {
           window.alert(`그룹원 추가 실패\n${errorMessage}`);
         } else {
           // 네이티브 환경에서는 Alert.alert 사용
-          Alert.alert('그룹원 추가 실패', errorMessage);
+          showErrorAlert(errorMessage);
         }
       }
     } catch (error: any) {
@@ -214,7 +206,7 @@ export default function GroupScreen({ navigation }: any) {
         window.alert(`그룹원 추가 실패\n${errorMessage}`);
       } else {
         // 네이티브 환경에서는 Alert.alert 사용
-        Alert.alert('그룹원 추가 실패', errorMessage);
+        showErrorAlert(errorMessage);
       }
     } finally {
       // 로딩 상태 해제

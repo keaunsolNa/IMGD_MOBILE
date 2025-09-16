@@ -5,13 +5,14 @@ import {
   TextInput, 
   TouchableOpacity, 
   ScrollView, 
-  Alert, 
   KeyboardAvoidingView,
   Platform,
   FlatList
 } from 'react-native';
 import { styles } from '@/styles/screens/community/CreateArticleScreen';
 import { CommunityAPI, Tag, ArticleWithTags } from '@/services/community';
+import CreateTagModal from './CreateTagModal';
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
 
 interface CreateArticleScreenProps {
   navigation: any;
@@ -28,6 +29,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
   const [loading, setLoading] = useState(false);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(true);
+  const [showTagModal, setShowTagModal] = useState(false);
 
   useEffect(() => {
     loadAvailableTags();
@@ -62,17 +64,26 @@ export default function CreateArticleScreen({ navigation, route }: any) {
     }
   };
 
+  const handleCreateTag = () => {
+    setShowTagModal(true);
+  };
+
+  const handleTagCreated = async () => {
+    // 태그 생성 후 사용 가능한 태그 목록 새로고침
+    await loadAvailableTags();
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
-      Alert.alert('오류', '제목을 입력해주세요.');
+      showErrorAlert('제목을 입력해주세요.');
       return;
     }
     if (!content.trim()) {
-      Alert.alert('오류', '내용을 입력해주세요.');
+      showErrorAlert('내용을 입력해주세요.');
       return;
     }
     if (!password.trim()) {
-      Alert.alert('오류', '비밀번호를 입력해주세요.');
+      showErrorAlert('비밀번호를 입력해주세요.');
       return;
     }
 
@@ -82,7 +93,16 @@ export default function CreateArticleScreen({ navigation, route }: any) {
       // 선택된 태그들을 Tag 객체 배열로 변환
       const selectedTags = tags.map(tagName => {
         const tag = availableTags.find(t => t.name === tagName);
-        return tag || { id: 0, name: tagName, color: '#ccc', articleCount: 0 };
+        return tag || { 
+          tagId: 0, 
+          name: tagName, 
+          color: '#ccc', 
+          regDtm: new Date().toISOString(),
+          regId: 'user',
+          modDtm: new Date().toISOString(),
+          modId: 'user',
+          articleCount: 0 
+        };
       });
       
       // ArticleWithTags 형태로 데이터 구성 (백엔드 구조에 맞춤)
@@ -103,21 +123,26 @@ export default function CreateArticleScreen({ navigation, route }: any) {
       const response = await CommunityAPI.createArticle(articleData);
       
       if (response.data?.success) {
-        Alert.alert('성공', '게시글이 작성되었습니다.', [
-          { 
-            text: '확인', 
-            onPress: () => {
-              onArticleCreated?.(); // 게시글 목록 새로고침
-              navigation.goBack();
-            }
+        // 게시글 목록 새로고침
+        onArticleCreated?.();
+        
+        // 성공 후 해당 게시글을 바로 보기
+        showSuccessAlert('게시글이 작성되었습니다.', () => {
+          // 응답에서 생성된 게시글 ID를 사용하여 상세 화면으로 이동
+          if (response.data?.data && response.data.data.length > 0) {
+            const createdArticle = response.data.data[0];
+            navigation.navigate('ArticleDetail', { article: createdArticle });
+          } else {
+            // fallback: 커뮤니티 화면으로 이동
+            navigation.navigate('Community');
           }
-        ]);
+        });
       } else {
-        Alert.alert('오류', '게시글 작성에 실패했습니다.');
+        showErrorAlert('게시글 작성에 실패했습니다.');
       }
     } catch (error) {
       console.error('게시글 작성 실패:', error);
-      Alert.alert('오류', '게시글 작성에 실패했습니다.');
+      showErrorAlert('게시글 작성에 실패했습니다.');
     } finally {
       setLoading(false);
     }
@@ -125,13 +150,11 @@ export default function CreateArticleScreen({ navigation, route }: any) {
 
   const handleCancel = () => {
     if (title.trim() || content.trim() || password.trim() || tags.length > 0) {
-      Alert.alert(
+      showConfirmAlert(
         '작성 취소',
         '작성 중인 내용이 있습니다. 정말 취소하시겠습니까?',
-        [
-          { text: '계속 작성', style: 'cancel' },
-          { text: '취소', onPress: () => navigation.goBack() }
-        ]
+        () => navigation.goBack(),
+        () => {} // 계속 작성 (아무것도 하지 않음)
       );
     } else {
       navigation.goBack();
@@ -252,6 +275,14 @@ export default function CreateArticleScreen({ navigation, route }: any) {
             </TouchableOpacity>
           </View>
           
+          {/* 새 태그 만들기 버튼 */}
+          <TouchableOpacity 
+            style={styles.createTagButton}
+            onPress={handleCreateTag}
+          >
+            <Text style={styles.createTagText}>+ 새 태그 만들기</Text>
+          </TouchableOpacity>
+          
           {/* 선택된 태그 목록 */}
           {tags.length > 0 && (
             <View style={styles.tagsContainer}>
@@ -278,7 +309,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
               <FlatList
                 data={availableTags}
                 renderItem={renderAvailableTag}
-                keyExtractor={(item, index) => item?.id?.toString() || `available-tag-${index}`}
+                keyExtractor={(item, index) => item?.tagId?.toString() || `available-tag-${index}`}
                 numColumns={2}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.availableTagsList}
@@ -287,6 +318,13 @@ export default function CreateArticleScreen({ navigation, route }: any) {
           </View>
         </View>
       </ScrollView>
+      
+      {/* 태그 생성 모달 */}
+      <CreateTagModal
+        visible={showTagModal}
+        onClose={() => setShowTagModal(false)}
+        onTagCreated={handleTagCreated}
+      />
     </KeyboardAvoidingView>
   );
 }

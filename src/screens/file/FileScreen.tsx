@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal, Image, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Image, Pressable } from 'react-native';
+import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
 import { styles } from '@/styles/screens/file/FileScreen';
 import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
@@ -77,7 +78,7 @@ export default function FileScreen() {
       setFilesAndDirectories(Array.isArray(data) ? data : []);
     } catch (e: any) {
       console.error('파일 및 디렉토리 목록 조회 실패:', e);
-      Alert.alert('오류', '파일 및 디렉토리 목록을 불러올 수 없습니다.');
+      showErrorAlert('파일 및 디렉토리 목록을 불러올 수 없습니다.');
       setFilesAndDirectories([]);
     } finally {
       setLoadingFiles(false);
@@ -160,7 +161,7 @@ export default function FileScreen() {
         }
       } catch (error) {
         console.error('파일 정보 조회 실패:', error);
-        Alert.alert('오류', '파일 정보를 불러올 수 없습니다.');
+        showErrorAlert('파일 정보를 불러올 수 없습니다.');
       } finally {
         setImageLoading(false);
       }
@@ -231,7 +232,7 @@ export default function FileScreen() {
       }
     } else {
       // 네이티브 환경에서는 Alert.alert 사용
-      Alert.alert(
+      showConfirmAlert(
         '파일 삭제',
         `"${file.fileOrgNm}" 파일을 삭제하시겠습니까?`,
         [
@@ -248,7 +249,7 @@ export default function FileScreen() {
                 
                 // ApiResponse 구조 확인
                 if (response.data.success) {
-                  Alert.alert('성공', '파일이 삭제되었습니다.');
+                  showSuccessAlert('파일이 삭제되었습니다.');
                   
                   // 삭제된 파일의 parentId로 이동
                   const parentId = response.data.data.parentId;
@@ -272,7 +273,7 @@ export default function FileScreen() {
                 } else {
                   // API에서 에러 응답을 받은 경우
                   const errorMessage = response.data.error?.message || '파일 삭제에 실패했습니다.';
-                  Alert.alert('오류', errorMessage);
+                  showErrorAlert(errorMessage);
                 }
               } catch (error: any) {
                 console.error('파일 삭제 실패:', error);
@@ -283,15 +284,15 @@ export default function FileScreen() {
                   
                   // ApiResponse 구조인 경우
                   if (responseData.error && responseData.error.message) {
-                    Alert.alert('오류', responseData.error.message);
+                    showErrorAlert(responseData.error.message);
                   } else if (responseData.message) {
-                    Alert.alert('오류', responseData.message);
+                    showErrorAlert(responseData.message);
                   } else {
-                    Alert.alert('오류', '파일 삭제에 실패했습니다.');
+                    showErrorAlert('파일 삭제에 실패했습니다.');
                   }
                 } else {
                   // 네트워크 에러나 기타 에러
-                  Alert.alert('오류', '파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+                  showErrorAlert('파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
                 }
               }
             }
@@ -304,7 +305,7 @@ export default function FileScreen() {
   // 폴더 삭제
   const handleDeleteFolder = async (folder: FileTableDTO) => {
     if (!folder.fileId || !selectedGroup?.groupId) {
-      Alert.alert('오류', '폴더 정보가 올바르지 않습니다.');
+      showErrorAlert('폴더 정보가 올바르지 않습니다.');
       return;
     }
 
@@ -366,7 +367,7 @@ export default function FileScreen() {
       }
     } else {
       // 네이티브 환경에서는 Alert.alert 사용
-      Alert.alert(
+      showConfirmAlert(
         '폴더 삭제',
         `"${folder.fileNm}" 폴더를 삭제하시겠습니까?\n하위 파일과 폴더도 모두 삭제됩니다.`,
         [
@@ -383,7 +384,7 @@ export default function FileScreen() {
                 
                 // ApiResponse 구조 확인
                 if (response.data.success) {
-                  Alert.alert('성공', '폴더가 삭제되었습니다.');
+                  showSuccessAlert('폴더가 삭제되었습니다.');
                   
                   // 삭제된 폴더의 parentId로 이동
                   const parentId = response.data.data.parentId;
@@ -407,7 +408,7 @@ export default function FileScreen() {
                 } else {
                   // API에서 에러 응답을 받은 경우
                   const errorMessage = response.data.error?.message || '폴더 삭제에 실패했습니다.';
-                  Alert.alert('오류', errorMessage);
+                  showErrorAlert(errorMessage);
                 }
               } catch (error: any) {
                 console.error('폴더 삭제 실패:', error);
@@ -418,9 +419,9 @@ export default function FileScreen() {
                   
                   // ApiResponse 구조인 경우
                   if (responseData.error && responseData.error.message) {
-                    Alert.alert('오류', responseData.error.message);
+                    showErrorAlert(responseData.error.message);
                   } else if (responseData.message) {
-                    Alert.alert('오류', responseData.message);
+                    showErrorAlert(responseData.message);
                   } else {
                     Alert.alert('오류', '폴더 삭제에 실패했습니다.');
                   }
@@ -443,7 +444,7 @@ export default function FileScreen() {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다.');
+        showErrorAlert('갤러리 접근 권한이 필요합니다.');
         return;
       }
 
@@ -465,7 +466,7 @@ export default function FileScreen() {
            try {
              // 파일 크기 확인 (50MB 제한)
              if (fileSize && fileSize > 50 * 1024 * 1024) {
-               Alert.alert('파일 크기 초과', '파일 크기는 50MB를 초과할 수 없습니다.');
+               showErrorAlert('파일 크기는 50MB를 초과할 수 없습니다.');
                return;
              }
            } catch (error) {
@@ -478,7 +479,7 @@ export default function FileScreen() {
          const fileExtension = fileName.toLowerCase().split('.').pop() || '';
          
          if (!fileExtension || !['jpg', 'jpeg', 'png'].includes(fileExtension)) {
-           Alert.alert('지원하지 않는 파일 형식', 'JPG, PNG 파일만 업로드할 수 있습니다.');
+           showErrorAlert('JPG, PNG 파일만 업로드할 수 있습니다.');
            return;
          }
 
@@ -493,14 +494,14 @@ export default function FileScreen() {
        }
     } catch (error) {
       console.error('파일 선택 실패:', error);
-      Alert.alert('오류', '파일을 선택할 수 없습니다.');
+      showErrorAlert('파일을 선택할 수 없습니다.');
     }
   };
 
   // 파일 업로드
   const handleUploadFile = async () => {
     if (!selectedFile || !selectedGroup?.groupId || !subject) {
-      Alert.alert('오류', '파일을 선택해주세요.');
+      showErrorAlert('파일을 선택해주세요.');
       return;
     }
 
@@ -519,7 +520,7 @@ export default function FileScreen() {
 
       // ApiResponse 구조 확인 (fetch API 사용으로 직접 응답)
       if (response.success) {
-        Alert.alert('성공', '파일이 업로드되었습니다.');
+        showSuccessAlert('파일이 업로드되었습니다.');
         // 파일 목록 새로고침
         await loadFilesAndDirectories(selectedGroup.groupId, currentParentId);
         // 업로드 모달 닫기
@@ -528,7 +529,7 @@ export default function FileScreen() {
       } else {
         // API에서 에러 응답을 받은 경우
         const errorMessage = response.error?.message || '파일 업로드에 실패했습니다.';
-        Alert.alert('오류', errorMessage);
+        showErrorAlert(errorMessage);
       }
     } catch (error: any) {
       console.error('파일 업로드 실패:', error);
@@ -537,15 +538,15 @@ export default function FileScreen() {
       if (error && typeof error === 'object') {
         // ApiResponse 구조인 경우
         if (error.error && error.error.message) {
-          Alert.alert('오류', error.error.message);
+          showErrorAlert(error.error.message);
         } else if (error.message) {
-          Alert.alert('오류', error.message);
+          showErrorAlert(error.message);
         } else {
-          Alert.alert('오류', '파일 업로드에 실패했습니다.');
+          showErrorAlert('파일 업로드에 실패했습니다.');
         }
       } else {
         // 네트워크 에러나 기타 에러
-        Alert.alert('오류', '파일 업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+        showErrorAlert('파일 업로드에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
       }
     } finally {
       setUploadingFile(false);
@@ -555,7 +556,7 @@ export default function FileScreen() {
   // 폴더 생성
   const handleCreateFolder = async () => {
     if (!newFolderName.trim() || !selectedGroup?.groupId || !subject) {
-      Alert.alert('오류', '폴더 이름을 입력해주세요.');
+      showErrorAlert('폴더 이름을 입력해주세요.');
       return;
     }
 
@@ -573,7 +574,7 @@ export default function FileScreen() {
       
       // ApiResponse 구조 확인
       if (response.data.success) {
-        Alert.alert('성공', '폴더가 생성되었습니다.');
+        showSuccessAlert('폴더가 생성되었습니다.');
         // 폴더 목록 새로고침 - 현재 위치한 디렉토리에서 새로고침
         await loadFilesAndDirectories(selectedGroup.groupId, currentParentId);
         // 폴더 생성 모드 완전 종료
@@ -583,7 +584,7 @@ export default function FileScreen() {
       } else {
         // API에서 에러 응답을 받은 경우
         const errorMessage = response.data.error?.message || '폴더 생성에 실패했습니다.';
-        Alert.alert('오류', errorMessage);
+        showErrorAlert(errorMessage);
         setCreatingFolder(false);
       }
     } catch (error: any) {
@@ -599,11 +600,11 @@ export default function FileScreen() {
         } else if (responseData.message) {
           Alert.alert('오류', responseData.message);
         } else {
-          Alert.alert('오류', '폴더 생성에 실패했습니다.');
+          showErrorAlert('폴더 생성에 실패했습니다.');
         }
       } else {
         // 네트워크 에러나 기타 에러
-        Alert.alert('오류', '폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+        showErrorAlert('폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
       }
       setCreatingFolder(false);
     }

@@ -82,3 +82,9 @@ export type CreateCommentDTO = {
   content: string;
   articleId: number;
 };
+
+export type ArticleSearch = {
+  title?: string;
+  article?: string;
+  userNm?: string;
+};
