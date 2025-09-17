@@ -115,6 +115,7 @@ export const GroupAPI = {
   addGroupUser: (dto: any, userId: string) => api.post(`/api/group/makeNewGroupUser`, dto, { params: { userId } }),
   deleteGroupUser: (dto: any, userId: string) => api.delete(`/api/group/deleteGroupUser`, { data: dto, params: { userId } }),
   changeMstUserGroup: (dto: any, userId: string) => api.post(`/api/group/changeMstUserGroup`, dto, { params: { userId } }),
+  deleteGroup: (groupId: number) => api.delete(`/api/group/deleteGroup`, { params: { groupId } }),
   
   // 기존 구조를 유지하는 API들 (ApiResponse를 사용하지 않음)
   findGroupName: (userId: string) => api.get(`/api/group/findGroupName`, { params: { userId } }),

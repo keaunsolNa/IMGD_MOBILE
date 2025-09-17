@@ -89,6 +89,10 @@ export const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  groupActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   addMemberButton: {
     backgroundColor: '#28a745',
     paddingHorizontal: 12,
@@ -96,6 +100,17 @@ export const styles = StyleSheet.create({
     borderRadius: 6,
   },
   addMemberButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deleteGroupButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteGroupButtonText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
@@ -112,6 +127,24 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  userItemContent: {
+    flex: 1,
+  },
+  removeUserButton: {
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  removeUserButtonText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
   },
   userName: {
     fontSize: 14,

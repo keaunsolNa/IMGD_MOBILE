@@ -220,6 +220,186 @@ export default function GroupScreen({ navigation }: any) {
     }
   };
 
+  // 그룹에서 유저 제거하는 함수
+  const handleRemoveUserFromGroup = async (groupId: number, groupName: string, userId: string, userName: string) => {
+    if (!subject) return;
+
+    // 확인 다이얼로그
+    const confirmMessage = `${userName}님을 "${groupName}" 그룹에서 제거하시겠습니까?`;
+    
+    if (typeof window !== 'undefined' && window.confirm) {
+      // 웹 환경
+      if (!window.confirm(confirmMessage)) return;
+    } else {
+      // 네이티브 환경에서는 간단한 확인 처리
+      // 실제로는 Alert.alert를 사용해야 하지만 여기서는 간단히 처리
+      console.log('네이티브 환경에서 확인 다이얼로그 필요');
+    }
+
+    try {
+      const dto = {
+        groupId: groupId,
+        groupNm: groupName,
+        groupMstUserId: subject
+      };
+      
+      const response = await GroupAPI.deleteGroupUser(dto, userId);
+      
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        // 성공 후 처리 함수
+        const handleSuccess = async () => {
+          // 해당 그룹의 유저 목록 새로고침
+          try {
+            const { data } = await GroupAPI.findGroupUserWhatInside(groupId);
+            const users = Array.isArray(data) ? data : [];
+            setGroupUsers(new Map(groupUsers.set(groupId, users)));
+          } catch (error) {
+            // 그룹 유저 목록 새로고침 실패
+          }
+        };
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹원 제거 성공! 🎉\n${userName}님이 "${groupName}" 그룹에서 제거되었습니다.`);
+          await handleSuccess();
+        } else {
+          // 네이티브 환경에서는 showSuccessAlert 사용
+          showSuccessAlert(`${userName}님이 "${groupName}" 그룹에서 제거되었습니다.`, handleSuccess);
+        }
+      } else {
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '그룹에서 유저를 제거할 수 없습니다.';
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹원 제거 실패\n${errorMessage}`);
+        } else {
+          // 네이티브 환경에서는 Alert.alert 사용
+          showErrorAlert(errorMessage);
+        }
+      }
+    } catch (error: any) {
+      // 네트워크 에러나 기타 예외 발생
+      console.error('그룹원 제거 에러:', error);
+      
+      let errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          errorMessage = responseData.error.message;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        }
+      }
+      
+      // 웹 환경에서는 window.alert 사용
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`그룹원 제거 실패\n${errorMessage}`);
+      } else {
+        // 네이티브 환경에서는 Alert.alert 사용
+        showErrorAlert(errorMessage);
+      }
+    }
+  };
+
+  // 그룹 삭제 함수
+  const handleDeleteGroup = async (groupId: number, groupName: string) => {
+    if (!subject) return;
+
+    try {
+      // 그룹원 목록 확인
+      const { data } = await GroupAPI.findGroupUserWhatInside(groupId);
+      const users = Array.isArray(data) ? data : [];
+      
+      // MST_USER를 제외한 그룹원이 있는지 확인
+      const nonMasterUsers = users.filter(user => user.userId !== subject);
+      
+      if (nonMasterUsers.length > 0) {
+        const memberNames = nonMasterUsers.map(user => user.userNm).join(', ');
+        const errorMessage = `그룹에 다른 멤버가 있어 삭제할 수 없습니다.\n\n남은 멤버: ${memberNames}\n\n먼저 모든 멤버를 제거한 후 그룹을 삭제해주세요.`;
+        
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(errorMessage);
+        } else {
+          showErrorAlert(errorMessage);
+        }
+        return;
+      }
+
+      // 확인 다이얼로그
+      const confirmMessage = `"${groupName}" 그룹을 삭제하시겠습니까?\n\n⚠️ 경고: 그룹 삭제 시 해당 그룹의 모든 파일과 폴더가 영구적으로 삭제됩니다.`;
+      
+      if (typeof window !== 'undefined' && window.confirm) {
+        // 웹 환경
+        if (!window.confirm(confirmMessage)) return;
+      } else {
+        // 네이티브 환경에서는 간단한 확인 처리
+        console.log('네이티브 환경에서 확인 다이얼로그 필요');
+      }
+
+      const response = await GroupAPI.deleteGroup(groupId);
+      
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        // 성공 후 처리 함수
+        const handleSuccess = async () => {
+          // 그룹 목록 새로고침
+          await loadGroups();
+        };
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹 삭제 성공! 🎉\n"${groupName}" 그룹이 삭제되었습니다.`);
+          await handleSuccess();
+        } else {
+          // 네이티브 환경에서는 showSuccessAlert 사용
+          showSuccessAlert(`"${groupName}" 그룹이 삭제되었습니다.`, handleSuccess);
+        }
+      } else {
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '그룹 삭제에 실패했습니다.';
+        
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`그룹 삭제 실패\n${errorMessage}`);
+        } else {
+          // 네이티브 환경에서는 Alert.alert 사용
+          showErrorAlert(errorMessage);
+        }
+      }
+    } catch (error: any) {
+      // 네트워크 에러나 기타 예외 발생
+      console.error('그룹 삭제 에러:', error);
+      
+      let errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          errorMessage = responseData.error.message;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        }
+      }
+      
+      // 웹 환경에서는 window.alert 사용
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`그룹 삭제 실패\n${errorMessage}`);
+      } else {
+        // 네이티브 환경에서는 Alert.alert 사용
+        showErrorAlert(errorMessage);
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
       {/* Left Sidebar */}
@@ -259,26 +439,44 @@ export default function GroupScreen({ navigation }: any) {
                   <View style={styles.userSectionHeader}>
                     <Text style={styles.userSectionTitle}>소속 유저 목록</Text>
                     {group.groupMstUserId === subject && (
-                      <TouchableOpacity 
-                        style={styles.addMemberButton}
-                        onPress={() => handleAddMember(group.groupId!, group.groupNm)}
-                      >
-                        <Text style={styles.addMemberButtonText}>그룹원 추가</Text>
-                      </TouchableOpacity>
+                      <View style={styles.groupActionButtons}>
+                        <TouchableOpacity 
+                          style={styles.addMemberButton}
+                          onPress={() => handleAddMember(group.groupId!, group.groupNm)}
+                        >
+                          <Text style={styles.addMemberButtonText}>그룹원 추가</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.deleteGroupButton}
+                          onPress={() => handleDeleteGroup(group.groupId!, group.groupNm)}
+                        >
+                          <Text style={styles.deleteGroupButtonText}>그룹 삭제</Text>
+                        </TouchableOpacity>
+                      </View>
                     )}
                   </View>
                   {groupUsers.get(group.groupId!)?.map((user, userIdx) => (
-                    <TouchableOpacity 
-                      key={userIdx} 
-                      style={styles.userItem}
-                      onPress={() => navigateToGroupUser(group.groupId!, group.groupNm, user.userId)}
-                    >
-                      <Text style={styles.userName}>
-                        소속 유저: {user.userNm}
-                        {user.userId === group.groupMstUserId && ' 👑'}
-                      </Text>
-                      <Text style={styles.joinDate}>가입 일자: {user.regDtm}</Text>
-                    </TouchableOpacity>
+                    <View key={userIdx} style={styles.userItem}>
+                      <TouchableOpacity 
+                        style={styles.userItemContent}
+                        onPress={() => navigateToGroupUser(group.groupId!, group.groupNm, user.userId)}
+                      >
+                        <Text style={styles.userName}>
+                          소속 유저: {user.userNm}
+                          {user.userId === group.groupMstUserId && ' 👑'}
+                        </Text>
+                        <Text style={styles.joinDate}>가입 일자: {user.regDtm}</Text>
+                      </TouchableOpacity>
+                      {/* 그룹 마스터가 아니고, 현재 사용자가 그룹 마스터인 경우에만 제거 버튼 표시 */}
+                      {user.userId !== group.groupMstUserId && group.groupMstUserId === subject && (
+                        <TouchableOpacity 
+                          style={styles.removeUserButton}
+                          onPress={() => handleRemoveUserFromGroup(group.groupId!, group.groupNm, user.userId, user.userNm)}
+                        >
+                          <Text style={styles.removeUserButtonText}>제거</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   )) || (
                     <Text style={styles.noUsersText}>유저 정보를 불러오는 중...</Text>
                   )}

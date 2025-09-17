@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import Button from '../../components/Button';
-import TextField from '../../components/TextField';
+import { validateGroupName, validateGroupNameInput } from '@/utils/folderValidation';
 import { GroupAPI, FileAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
@@ -11,12 +11,39 @@ import { styles } from '@/styles/screens/group/MakeGroupScreen';
 export default function MakeGroupScreen({ navigation }: any) {
   const [groupNm, setGroupNm] = useState('');
   const [creating, setCreating] = useState(false);
+  const [groupValidation, setGroupValidation] = useState<{
+    isValid: boolean;
+    errorMessage?: string;
+    sanitizedSuggestion?: string;
+  }>({ isValid: true });
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const subject = getSubjectFromToken(accessToken);
+
+  // 그룹명 입력 핸들러
+  const handleGroupNameChange = (text: string) => {
+    setGroupNm(text);
+    const validation = validateGroupNameInput(text);
+    setGroupValidation(validation);
+  };
+
+  // 정리된 그룹명 적용
+  const handleApplySanitizedName = () => {
+    if (groupValidation.sanitizedSuggestion) {
+      setGroupNm(groupValidation.sanitizedSuggestion);
+      setGroupValidation({ isValid: true });
+    }
+  };
 
   const createGroup = async () => {
     if (!groupNm.trim()) return alert('그룹명을 입력하세요.');
     if (!subject) return alert('사용자 정보를 가져올 수 없습니다.');
+
+    // 그룹명 유효성 검사
+    const validation = validateGroupName(groupNm.trim());
+    if (!validation.isValid) {
+      alert(validation.errorMessage || '그룹명이 올바르지 않습니다.');
+      return;
+    }
     
     setCreating(true);
     try {
@@ -117,13 +144,45 @@ export default function MakeGroupScreen({ navigation }: any) {
     <View style={styles.container}>
       <Text style={styles.title}>Group Name</Text>
       <View style={styles.inputContainer}>
-        <TextField value={groupNm} onChangeText={setGroupNm} />
+        <TextInput
+          style={[
+            styles.groupNameInput,
+            !groupValidation.isValid && styles.groupNameInputError
+          ]}
+          placeholder="그룹명을 입력하세요"
+          value={groupNm}
+          onChangeText={handleGroupNameChange}
+        />
+        
+        {/* 유효성 검사 에러 메시지 */}
+        {!groupValidation.isValid && groupValidation.errorMessage && (
+          <View style={styles.validationErrorContainer}>
+            <Text style={styles.validationErrorText}>
+              {groupValidation.errorMessage}
+            </Text>
+            
+            {/* 정리된 이름 제안 */}
+            {groupValidation.sanitizedSuggestion && (
+              <View style={styles.sanitizedSuggestionContainer}>
+                <Text style={styles.sanitizedSuggestionText}>
+                  제안: {groupValidation.sanitizedSuggestion}
+                </Text>
+                <TouchableOpacity 
+                  style={styles.applySuggestionButton}
+                  onPress={handleApplySanitizedName}
+                >
+                  <Text style={styles.applySuggestionButtonText}>적용</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </View>
       <View style={styles.buttonContainer}>
         <Button 
           title={creating ? "생성 중..." : "Create"} 
           onPress={createGroup} 
-          disabled={creating}
+          disabled={creating || !groupValidation.isValid}
         />
       </View>
     </View>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Image, Pressable } from 'react-native';
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
+import { validateFolderName, validateFolderNameInput } from '@/utils/folderValidation';
 import { styles } from '@/styles/screens/file/FileScreen';
 import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
@@ -39,6 +40,11 @@ export default function FileScreen() {
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderValidation, setFolderValidation] = useState<{
+    isValid: boolean;
+    errorMessage?: string;
+    sanitizedSuggestion?: string;
+  }>({ isValid: true });
   const [currentParentId, setCurrentParentId] = useState<number>(2); // 현재 디렉토리의 parentId
   const [directoryStack, setDirectoryStack] = useState<Array<{ id: number; name: string }>>([]); // 디렉토리 탐색 경로
   const [currentDirectoryName, setCurrentDirectoryName] = useState<string>(''); // 현재 디렉토리의 이름
@@ -109,12 +115,20 @@ export default function FileScreen() {
     setCurrentDirectoryName('');
   };
 
+  // 폴더명 입력 핸들러
+  const handleFolderNameChange = (text: string) => {
+    setNewFolderName(text);
+    const validation = validateFolderNameInput(text);
+    setFolderValidation(validation);
+  };
+
   // 폴더 생성 모드 토글
   const toggleCreateFolder = () => {
     if (showCreateFolder) {
       // 폴더 생성 모드에서 나가기
       setShowCreateFolder(false);
       setNewFolderName('');
+      setFolderValidation({ isValid: true });
     } else {
       // 폴더 생성 모드로 들어가기
       setShowCreateFolder(true);
@@ -560,6 +574,13 @@ export default function FileScreen() {
       return;
     }
 
+    // 폴더명 유효성 검사
+    const validation = validateFolderName(newFolderName.trim());
+    if (!validation.isValid) {
+      showErrorAlert(validation.errorMessage || '폴더명이 올바르지 않습니다.');
+      return;
+    }
+
     setCreatingFolder(true);
     try {
       const dto = {
@@ -580,6 +601,7 @@ export default function FileScreen() {
         // 폴더 생성 모드 완전 종료
         setShowCreateFolder(false);
         setNewFolderName('');
+        setFolderValidation({ isValid: true });
         setCreatingFolder(false);
       } else {
         // API에서 에러 응답을 받은 경우
@@ -596,9 +618,9 @@ export default function FileScreen() {
         
         // ApiResponse 구조인 경우
         if (responseData.error && responseData.error.message) {
-          Alert.alert('오류', responseData.error.message);
+          showErrorAlert(responseData.error.message);
         } else if (responseData.message) {
-          Alert.alert('오류', responseData.message);
+          showErrorAlert(responseData.message);
         } else {
           showErrorAlert('폴더 생성에 실패했습니다.');
         }
@@ -607,6 +629,14 @@ export default function FileScreen() {
         showErrorAlert('폴더 생성에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
       }
       setCreatingFolder(false);
+    }
+  };
+
+  // 정리된 폴더명 적용
+  const handleApplySanitizedName = () => {
+    if (folderValidation.sanitizedSuggestion) {
+      setNewFolderName(folderValidation.sanitizedSuggestion);
+      setFolderValidation({ isValid: true });
     }
   };
 
@@ -840,13 +870,40 @@ export default function FileScreen() {
              {showCreateFolder && (
                <View style={styles.folderNameInputContainer}>
                  <TextInput
-                   style={styles.folderNameInput}
+                   style={[
+                     styles.folderNameInput,
+                     !folderValidation.isValid && styles.folderNameInputError
+                   ]}
                    placeholder="폴더 이름을 입력하세요"
                    value={newFolderName}
-                   onChangeText={setNewFolderName}
+                   onChangeText={handleFolderNameChange}
                    autoFocus={true}
                    onSubmitEditing={handleCreateFolder}
                  />
+                 
+                 {/* 유효성 검사 에러 메시지 */}
+                 {!folderValidation.isValid && folderValidation.errorMessage && (
+                   <View style={styles.validationErrorContainer}>
+                     <Text style={styles.validationErrorText}>
+                       {folderValidation.errorMessage}
+                     </Text>
+                     
+                     {/* 정리된 이름 제안 */}
+                     {folderValidation.sanitizedSuggestion && (
+                       <View style={styles.sanitizedSuggestionContainer}>
+                         <Text style={styles.sanitizedSuggestionText}>
+                           제안: {folderValidation.sanitizedSuggestion}
+                         </Text>
+                         <TouchableOpacity 
+                           style={styles.applySuggestionButton}
+                           onPress={handleApplySanitizedName}
+                         >
+                           <Text style={styles.applySuggestionButtonText}>적용</Text>
+                         </TouchableOpacity>
+                       </View>
+                     )}
+                   </View>
+                 )}
                </View>
              )}
            </View>
