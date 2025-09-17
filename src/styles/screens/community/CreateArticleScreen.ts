@@ -74,15 +74,6 @@ export const styles = StyleSheet.create({
     minHeight: 200,
     backgroundColor: '#f9f9f9',
   },
-  passwordInput: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
   charCount: {
     fontSize: 12,
     color: '#999',

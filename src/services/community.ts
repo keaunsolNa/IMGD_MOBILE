@@ -76,6 +76,7 @@ export interface ArticleWithTags {
   modId?: string | null;
   userId?: string;
   userNm?: string;
+  pictureNm?: string | null;
   like?: number | null;
   watch?: number | null;
   likeCnt?: number | null;
@@ -123,6 +124,10 @@ export const ArticleAPI = {
   insertComment: (articleId: number, commentData: ArticleWithTags) => 
     api.post<ApiResponse<ArticleWithTags>>(`/api/article/insertComment?articleId=${articleId}`, commentData),
 
+  // 댓글 삭제
+  deleteComment: (articleId: number, commentId: number) => 
+    api.delete<ApiResponse<ArticleWithTags>>(`/api/article/deleteArticleComment?articleId=${articleId}&commentId=${commentId}`),
+
 };
 
 // Tag API (실제 백엔드 API 사용)
@@ -159,6 +164,7 @@ export const CommunityAPI = {
   deleteArticle: ArticleAPI.deleteArticle,
   likeArticle: ArticleAPI.likeArticle,
   insertComment: ArticleAPI.insertComment,
+  deleteComment: ArticleAPI.deleteComment,
   getComments: CommentAPI.getComments,
   createComment: CommentAPI.createComment,
 };

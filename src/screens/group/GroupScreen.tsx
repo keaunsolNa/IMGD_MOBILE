@@ -307,6 +307,94 @@ export default function GroupScreen({ navigation }: any) {
     }
   };
 
+  // 그룹 마스터 변경
+  const handleChangeMstUser = async (groupId: number, groupName: string, userId: string, userName: string) => {
+    if (!subject) return;
+
+    // 확인 다이얼로그
+    const confirmMessage = `${userName}님을 "${groupName}" 그룹의 새로운 마스터로 지정하시겠습니까?\n\n⚠️ 경고: 마스터 권한이 변경되면 현재 마스터는 일반 멤버가 됩니다.`;
+
+    if (typeof window !== 'undefined' && window.confirm) {
+      // 웹 환경
+      if (!window.confirm(confirmMessage)) return;
+    } else {
+      // 네이티브 환경에서는 간단한 확인 처리
+      console.log('네이티브 환경에서 확인 다이얼로그 필요');
+    }
+
+    try {
+      const dto = {
+        groupId: groupId,
+        groupNm: groupName,
+        groupMstUserId: subject
+      };
+      
+      const response = await GroupAPI.changeMstUserGroup(dto, userId);
+      
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        // 성공 후 처리 함수
+        const handleSuccess = async () => {
+          // 그룹 목록 새로고침
+          await loadGroups();
+          
+          // 해당 그룹의 유저 목록 새로고침
+          try {
+            const { data } = await GroupAPI.findGroupUserWhatInside(groupId);
+            setGroupUsers(prev => new Map(prev.set(groupId, Array.isArray(data) ? data : [])));
+          } catch (error) {
+            console.error('그룹 유저 목록 새로고침 실패:', error);
+          }
+        };
+
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`마스터 변경 성공! 🎉\n"${groupName}" 그룹의 마스터가 ${userName}님으로 변경되었습니다.`);
+          await handleSuccess();
+        } else {
+          // 네이티브 환경에서는 showSuccessAlert 사용
+          showSuccessAlert(`"${groupName}" 그룹의 마스터가 ${userName}님으로 변경되었습니다.`, handleSuccess);
+        }
+      } else {
+        // API에서 에러 응답을 받은 경우
+        const errorMessage = response.data.error?.message || '마스터 변경에 실패했습니다.';
+
+        // 웹 환경에서는 window.alert 사용
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert(`마스터 변경 실패\n${errorMessage}`);
+        } else {
+          // 네이티브 환경에서는 Alert.alert 사용
+          showErrorAlert(errorMessage);
+        }
+      }
+    } catch (error: any) {
+      // 네트워크 에러나 기타 예외 발생
+      console.error('마스터 변경 에러:', error);
+
+      let errorMessage = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (error.response && error.response.data) {
+        const responseData = error.response.data;
+
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          errorMessage = responseData.error.message;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        }
+      }
+
+      // 웹 환경에서는 window.alert 사용
+      if (typeof window !== 'undefined' && window.alert) {
+        window.alert(`마스터 변경 실패\n${errorMessage}`);
+      } else {
+        // 네이티브 환경에서는 Alert.alert 사용
+        showErrorAlert(errorMessage);
+      }
+    }
+  };
+
   // 그룹 삭제 함수
   const handleDeleteGroup = async (groupId: number, groupName: string) => {
     if (!subject) return;
@@ -474,6 +562,15 @@ export default function GroupScreen({ navigation }: any) {
                           onPress={() => handleRemoveUserFromGroup(group.groupId!, group.groupNm, user.userId, user.userNm)}
                         >
                           <Text style={styles.removeUserButtonText}>제거</Text>
+                        </TouchableOpacity>
+                      )}
+                      {/* 현재 사용자가 그룹 마스터이고, 해당 유저가 마스터가 아닌 경우에만 마스터 변경 버튼 표시 */}
+                      {user.userId !== group.groupMstUserId && group.groupMstUserId === subject && (
+                        <TouchableOpacity 
+                          style={styles.changeMstButton}
+                          onPress={() => handleChangeMstUser(group.groupId!, group.groupNm, user.userId, user.userNm)}
+                        >
+                          <Text style={styles.changeMstButtonText}>마스터 유저로 변경</Text>
                         </TouchableOpacity>
                       )}
                     </View>

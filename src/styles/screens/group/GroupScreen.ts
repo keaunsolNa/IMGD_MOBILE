@@ -146,6 +146,18 @@ export const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  changeMstButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  changeMstButtonText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
+  },
   userName: {
     fontSize: 14,
     fontWeight: 'bold',

@@ -23,7 +23,6 @@ export default function CreateArticleScreen({ navigation, route }: any) {
   const { onArticleCreated } = route.params || {};
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [password, setPassword] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,10 +81,6 @@ export default function CreateArticleScreen({ navigation, route }: any) {
       showErrorAlert('내용을 입력해주세요.');
       return;
     }
-    if (!password.trim()) {
-      showErrorAlert('비밀번호를 입력해주세요.');
-      return;
-    }
 
     try {
       setLoading(true);
@@ -108,7 +103,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
       // ArticleWithTags 형태로 데이터 구성 (백엔드 구조에 맞춤)
       const articleData: ArticleWithTags = {
         // articleId는 AUTO_INCREMENT이므로 제거
-        postPwd: password.trim(),
+        postPwd: '', // 비밀번호 제거됨
         type: 'POST', // TYPE을 POST로 설정
         title: title.trim(),
         article: content.trim(), // content 대신 article 사용
@@ -149,7 +144,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
   };
 
   const handleCancel = () => {
-    if (title.trim() || content.trim() || password.trim() || tags.length > 0) {
+    if (title.trim() || content.trim() || tags.length > 0) {
       showConfirmAlert(
         '작성 취소',
         '작성 중인 내용이 있습니다. 정말 취소하시겠습니까?',
@@ -239,20 +234,6 @@ export default function CreateArticleScreen({ navigation, route }: any) {
           <Text style={styles.charCount}>{content.length}/5000</Text>
         </View>
 
-        {/* 비밀번호 입력 */}
-        <View style={styles.inputSection}>
-          <Text style={styles.label}>비밀번호</Text>
-          <TextInput
-            style={styles.passwordInput}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="게시글 비밀번호를 입력하세요"
-            placeholderTextColor="#999"
-            secureTextEntry
-            maxLength={20}
-          />
-          <Text style={styles.charCount}>{password.length}/20</Text>
-        </View>
 
         {/* 태그 입력 */}
         <View style={styles.inputSection}>

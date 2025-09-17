@@ -5,12 +5,16 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  StyleSheet
+  StyleSheet,
+  Image
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { CommunityAPI, ArticleWithTags } from '@/services/community';
 import { showErrorAlert, showSuccessAlert } from '@/utils/alert';
 import TextField from '@/components/TextField';
+import { getProfileImageUrl } from '@/services/api';
+import { getSubjectFromToken } from '@/services/jwt';
+import type { RootState } from '@/redux/store';
 
 interface ArticleDetailScreenProps {
   navigation: any;
@@ -26,11 +30,11 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
   // 댓글 관련 상태
   const [commentTitle, setCommentTitle] = useState('');
   const [commentContent, setCommentContent] = useState('');
-  const [commentPassword, setCommentPassword] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
   // 현재 로그인한 유저 정보 가져오기
-  const currentUser = useSelector((state: any) => state.auth.user);
+  const accessToken = useSelector((state: RootState) => state.auth.accessToken);
+  const currentUserId = getSubjectFromToken(accessToken);
 
   useEffect(() => {
     if (initialArticle?.articleId) {
@@ -65,7 +69,7 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
     if (!article?.articleId) return;
     
     // 현재 로그인한 유저와 게시글 작성자가 같은지 확인
-    if (currentUser?.userId && article.userId && currentUser.userId === article.userId) {
+    if (currentUserId && article.userId && currentUserId === article.userId) {
       showErrorAlert('자신의 게시글에는 좋아요를 누를 수 없습니다.');
       return;
     }
@@ -97,6 +101,60 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
     }
   };
 
+  // 댓글 삭제 함수
+  const handleCommentDelete = async (articleId: number, commentId: number) => {
+    if (!articleId || !commentId) return;
+
+    // 확인 다이얼로그
+    const confirmMessage = '댓글을 삭제하시겠습니까?';
+    
+    if (typeof window !== 'undefined' && window.confirm) {
+      // 웹 환경
+      if (!window.confirm(confirmMessage)) return;
+    } else {
+      // 네이티브 환경에서는 간단한 확인 처리
+      console.log('네이티브 환경에서 확인 다이얼로그 필요');
+    }
+
+    try {
+      const response = await CommunityAPI.deleteComment(articleId, commentId);
+      
+      if (response.data?.success) {
+        // 댓글 삭제 성공 시 게시글 정보 새로고침
+        if (article?.articleId) {
+          await loadArticle(article.articleId);
+        }
+        showSuccessAlert('댓글이 삭제되었습니다.');
+      } else {
+        showErrorAlert('댓글 삭제에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('댓글 삭제 실패:', error);
+      showErrorAlert('댓글 삭제에 실패했습니다.');
+    }
+  };
+
+  // 댓글 좋아요 함수
+  const handleCommentLike = async (commentArticleId: number) => {
+    if (!commentArticleId) return;
+
+    try {
+      const response = await CommunityAPI.likeArticle(commentArticleId);
+      
+      if (response.data?.success) {
+        // 댓글 좋아요 성공 시 게시글 정보 새로고침
+        if (article?.articleId) {
+          await loadArticle(article.articleId);
+        }
+      } else {
+        showErrorAlert('댓글 좋아요에 실패했습니다.');
+      }
+    } catch (error) {
+      console.error('댓글 좋아요 실패:', error);
+      showErrorAlert('댓글 좋아요에 실패했습니다.');
+    }
+  };
+
   // 댓글 제출 함수
   const handleCommentSubmit = async () => {
     if (!article?.articleId) return;
@@ -111,31 +169,26 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
       return;
     }
     
-    if (!commentPassword.trim()) {
-      showErrorAlert('비밀번호를 입력해주세요.');
-      return;
-    }
-    
     try {
       setIsSubmittingComment(true);
       
       // 댓글 데이터 생성 (type을 COMMENT로 설정)
       const commentData: ArticleWithTags = {
         articleId: 0, // 댓글은 articleId가 0
-        postPwd: commentPassword,
+        postPwd: '', // 비밀번호 제거됨
         type: 'COMMENT',
         tagIds: '',
         tagList: [],
-        userId: currentUser?.userId || '',
-        userNm: currentUser?.name || currentUser?.nickName || '익명',
+        userId: currentUserId || '',
+        userNm: '익명',
         title: commentTitle,
         article: commentContent,
         likeCnt: 0,
         watchCnt: 0,
         regDtm: new Date().toISOString(),
-        regId: currentUser?.userId || '',
+        regId: currentUserId || '',
         modDtm: new Date().toISOString(),
-        modId: currentUser?.userId || ''
+        modId: currentUserId || ''
       };
       
       const response = await CommunityAPI.insertComment(article.articleId, commentData);
@@ -147,7 +200,6 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
         // 입력 필드 초기화
         setCommentTitle('');
         setCommentContent('');
-        setCommentPassword('');
         
         showSuccessAlert('댓글이 작성되었습니다.');
       } else {
@@ -247,11 +299,48 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
             <Text style={styles.commentsTitle}>댓글 ({article.comments.length})</Text>
             {article.comments.map((comment, index) => (
               <View key={index} style={styles.commentItem}>
-                <View style={styles.commentHeader}>
-                  <Text style={styles.commentAuthor}>{comment.userNm || '익명'}</Text>
-                  <Text style={styles.commentDate}>{comment.regDtm || ''}</Text>
+                <View style={styles.commentContentContainer}>
+                  {/* 프로필 사진 */}
+                  <Image
+                    source={getProfileImageUrl(comment.pictureNm)}
+                    style={styles.commentProfileImage}
+                  />
+                  
+                  {/* 댓글 내용 */}
+                  <View style={styles.commentTextContainer}>
+                    <Text style={styles.commentTitleContent}>
+                      <Text style={styles.commentTitle}>{comment.title}</Text>
+                      <Text style={styles.commentTitleSeparator}> : </Text>
+                      <Text style={styles.commentContent}>{comment.article}</Text>
+                    </Text>
+                    <View style={styles.commentFooter}>
+                      <Text style={styles.commentAuthorDate}>
+                        <Text style={styles.commentAuthorLabel}>작성자 : </Text>
+                        <Text style={styles.commentAuthor}>{comment.userNm || '익명'}</Text>
+                        <Text style={styles.commentDateSeparator}> ( </Text>
+                        <Text style={styles.commentDate}>{comment.regDtm || ''}</Text>
+                        <Text style={styles.commentDateSeparator}> )</Text>
+                      </Text>
+                      <View style={styles.commentActions}>
+                        <TouchableOpacity 
+                          style={styles.commentLikeButton}
+                          onPress={() => handleCommentLike(comment.articleId!)}
+                        >
+                          <Text style={styles.commentLikeButtonText}>👍 {comment.likeCnt || 0}</Text>
+                        </TouchableOpacity>
+                        {/* 본인이 작성한 댓글만 삭제 버튼 표시 */}
+                        {comment.userId === currentUserId && (
+                          <TouchableOpacity 
+                            style={styles.commentDeleteButton}
+                            onPress={() => handleCommentDelete(article?.articleId!, comment.articleId!)}
+                          >
+                            <Text style={styles.commentDeleteButtonText}>🗑️</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.commentContent}>{comment.article}</Text>
               </View>
             ))}
           </View>
@@ -273,7 +362,7 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
           
           <View style={styles.commentInputRow}>
             <Text style={styles.commentLabel}>내용:</Text>
-            <View style={styles.commentContentContainer}>
+            <View style={styles.commentInputContentContainer}>
               <TextField
                 value={commentContent}
                 onChangeText={setCommentContent}
@@ -289,16 +378,6 @@ export default function ArticleDetailScreen({ navigation, route }: ArticleDetail
             </View>
           </View>
           
-          <View style={styles.commentInputRow}>
-            <Text style={styles.commentLabel}>비밀번호:</Text>
-            <TextField
-              value={commentPassword}
-              onChangeText={setCommentPassword}
-              placeholder="비밀번호를 입력하세요"
-              secureTextEntry
-              style={styles.commentInput}
-            />
-          </View>
           
           <TouchableOpacity
             style={[styles.commentSubmitButton, isSubmittingComment && styles.commentSubmitButtonDisabled]}
@@ -481,7 +560,7 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top',
   },
-  commentContentContainer: {
+  commentInputContentContainer: {
     flex: 1,
     position: 'relative',
   },
@@ -534,24 +613,86 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  commentHeader: {
+  commentContentContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  commentProfileImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  commentTextContainer: {
+    flex: 1,
+  },
+  commentTitleContent: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  commentTitle: {
+    fontWeight: '600',
+    color: '#333',
+  },
+  commentTitleSeparator: {
+    color: '#666',
+  },
+  commentContent: {
+    color: '#555',
+  },
+  commentAuthorDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  commentAuthorLabel: {
+    color: '#999',
   },
   commentAuthor: {
-    fontSize: 14,
     fontWeight: '500',
     color: '#333',
   },
-  commentDate: {
-    fontSize: 12,
+  commentDateSeparator: {
     color: '#999',
   },
-  commentContent: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
+  commentDate: {
+    color: '#999',
+  },
+  commentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  commentLikeButton: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  commentLikeButtonText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  commentDeleteButton: {
+    backgroundColor: '#ffebee',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+  },
+  commentDeleteButtonText: {
+    fontSize: 12,
+    color: '#d32f2f',
+    fontWeight: '500',
   },
 });
