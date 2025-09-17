@@ -293,15 +293,7 @@ export default function FriendScreen() {
       showConfirmAlert(
         `친구 요청 ${actionText}`,
         confirmMessage,
-        [
-          {
-            text: '취소',
-            style: 'cancel',
-          },
-          {
-            text: actionText,
-            style: action === 'accept' ? 'default' : 'destructive',
-            onPress: async () => {
+        async () => {
               setProcessingRequest(targetUserId);
               try {
                 const response = await UserAPI.insertUserFriendTable(currentUserId, targetUserId, relationship);
@@ -344,9 +336,7 @@ export default function FriendScreen() {
               } finally {
                 setProcessingRequest(null);
               }
-            },
-          },
-        ]
+        }
       );
     }
   };
@@ -417,15 +407,7 @@ export default function FriendScreen() {
       showConfirmAlert(
         `${actionText} 확인`,
         confirmMessage,
-        [
-          {
-            text: '취소',
-            style: 'cancel',
-          },
-          {
-            text: actionText,
-            style: 'destructive',
-            onPress: async () => {
+        async () => {
               console.log('삭제/취소 확인됨');
               setDeletingFriend(targetUserId);
               try {
@@ -466,9 +448,7 @@ export default function FriendScreen() {
               } finally {
                 setDeletingFriend(null);
               }
-            },
-          },
-        ]
+        }
       );
     }
   };

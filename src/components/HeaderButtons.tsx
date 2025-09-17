@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, TouchableOpacity, Image, Modal, Text, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { showErrorAlert } from '@/utils/alert';
 import { useNavigation } from '@react-navigation/native';
 import { logout } from '@/services/auth';
 import { styles } from '@/styles/components/HeaderButtons';
-import { API_BASE_URL, UserAPI, getProfileImageUrl } from '@/services/api';
+import { API_BASE_URL, getProfileImageUrl, UserAPI } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
@@ -53,11 +53,9 @@ export default function HeaderButtons() {
 
   // 화면 포커스 시 알림 개수 로드
   useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+    return navigation.addListener('focus', () => {
       loadNotificationCount();
     });
-
-    return unsubscribe;
   }, [navigation, loadNotificationCount]);
 
   // 앱 시작 시에도 한 번 로드

@@ -249,15 +249,7 @@ export default function FileScreen() {
       showConfirmAlert(
         '파일 삭제',
         `"${file.fileOrgNm}" 파일을 삭제하시겠습니까?`,
-        [
-          {
-            text: '취소',
-            style: 'cancel'
-          },
-          {
-            text: '삭제',
-            style: 'destructive',
-            onPress: async () => {
+        async () => {
               try {
                 const response = await FileAPI.deleteFile(file.fileId!);
                 
@@ -309,9 +301,7 @@ export default function FileScreen() {
                   showErrorAlert('파일 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
                 }
               }
-            }
-          }
-        ]
+        }
       );
     }
   };
@@ -384,15 +374,7 @@ export default function FileScreen() {
       showConfirmAlert(
         '폴더 삭제',
         `"${folder.fileNm}" 폴더를 삭제하시겠습니까?\n하위 파일과 폴더도 모두 삭제됩니다.`,
-        [
-          {
-            text: '취소',
-            style: 'cancel'
-          },
-          {
-            text: '삭제',
-            style: 'destructive',
-            onPress: async () => {
+        async () => {
               try {
                 const response = await FileAPI.deleteDir(folder.fileId!);
                 
@@ -437,16 +419,14 @@ export default function FileScreen() {
                   } else if (responseData.message) {
                     showErrorAlert(responseData.message);
                   } else {
-                    Alert.alert('오류', '폴더 삭제에 실패했습니다.');
+                    showErrorAlert('폴더 삭제에 실패했습니다.');
                   }
                 } else {
                   // 네트워크 에러나 기타 에러
-                  Alert.alert('오류', '폴더 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
+                  showErrorAlert('폴더 삭제에 실패했습니다: ' + (error?.message || '알 수 없는 오류'));
                 }
               }
-            }
-          }
-        ]
+        }
       );
     }
   };
