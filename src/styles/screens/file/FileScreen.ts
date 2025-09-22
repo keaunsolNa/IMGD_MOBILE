@@ -436,6 +436,10 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
+  uploadProgressContainer: {
+    marginTop: 16,
+    alignItems: 'center',
+  },
   selectedFileName: {
     fontSize: 16,
     fontWeight: '600',

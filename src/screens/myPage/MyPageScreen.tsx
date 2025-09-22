@@ -5,10 +5,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { UserAPI, getProfileImageUrl } from '@/services/api';
 import { styles } from '@/styles/screens/myPage/MyPageScreen';
 import type { UserTableDTO } from '@/types/dto';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
-import { getAccessToken } from '@/services/storage';
+import { getAccessToken, clearTokens } from '@/services/storage';
+import ProgressBar from '@/components/ProgressBar';
+import { setAuth } from '@/redux/authSlice';
 
 export default function MyPageScreen({ route }: any) {
   const { targetUserId, groupNm } = route.params || {};
@@ -21,6 +23,11 @@ export default function MyPageScreen({ route }: any) {
     type: 'success' | 'error';
   } | null>(null);
   
+  // 프로필 이미지 업로드 관련 상태
+  const [uploadingProfileImage, setUploadingProfileImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
+  const dispatch = useDispatch();
   const accessToken = useSelector((s: RootState) => s.auth.accessToken);
   const currentUserId = getSubjectFromToken(accessToken);
 
@@ -120,6 +127,67 @@ export default function MyPageScreen({ route }: any) {
     setNewNickName('');
   };
 
+  const handleDeleteAccount = () => {
+    if (!user || !currentUserId) return;
+    
+    // 현재 로그인한 사용자와 마이페이지 사용자가 일치하는지 확인
+    if (user.userId !== String(currentUserId)) {
+      showErrorAlert('다른 사용자의 계정은 삭제할 수 없습니다.');
+      return;
+    }
+
+    // 웹 환경을 고려한 확인 다이얼로그
+    const confirmDelete = window.confirm(
+      '정말로 계정을 삭제하시겠습니까?\n\n삭제된 계정은 복구할 수 없으며, 관련된 모든 데이터가 영구적으로 삭제됩니다.'
+    );
+    
+    if (confirmDelete) {
+      confirmDeleteAccount();
+    }
+  };
+
+  const confirmDeleteAccount = async () => {
+    if (!user || !currentUserId) return;
+
+    try {
+      const response = await UserAPI.deleteUser(user.userId);
+      
+      // ApiResponse 구조 확인
+      if (response.data.success) {
+        showSuccessAlert('계정이 성공적으로 삭제되었습니다.');
+        
+        // 로그아웃 처리
+        await clearTokens();
+        dispatch(setAuth({ accessToken: null }));
+        
+        // 로그인 화면으로 이동 (navigation을 통해 처리)
+        // navigation.navigate('Login');
+      } else {
+        const errorMessage = response.data.error?.message || '계정 삭제에 실패했습니다.';
+        showErrorAlert(errorMessage);
+      }
+    } catch (e: any) {
+      console.error('계정 삭제 실패:', e);
+      
+      // axios 에러인 경우 백엔드 응답에서 에러 메시지 추출
+      if (e.response && e.response.data) {
+        const responseData = e.response.data;
+        
+        // ApiResponse 구조인 경우
+        if (responseData.error && responseData.error.message) {
+          showErrorAlert(responseData.error.message);
+        } else if (responseData.message) {
+          showErrorAlert(responseData.message);
+        } else {
+          showErrorAlert('계정 삭제에 실패했습니다.');
+        }
+      } else {
+        // 네트워크 에러나 기타 에러
+        showErrorAlert('계정 삭제에 실패했습니다.');
+      }
+    }
+  };
+
   const handleProfileImageUpload = async () => {
     
     if (!user || !currentUserId) {
@@ -153,6 +221,21 @@ export default function MyPageScreen({ route }: any) {
       if (!result.canceled && result.assets[0]) {
         const selectedImage = result.assets[0];
         
+        // 업로드 시작
+        setUploadingProfileImage(true);
+        setUploadProgress(0);
+        
+        // 프로그레스 시뮬레이션
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            if (prev >= 90) {
+              clearInterval(progressInterval);
+              return 90; // 90%에서 멈춤 (실제 완료 시 100%로 설정)
+            }
+            return prev + 15;
+          });
+        }, 300);
+        
         // 프로필 이미지 업로드
         const token = await getAccessToken();
         
@@ -161,6 +244,9 @@ export default function MyPageScreen({ route }: any) {
           user.userId,
           token ?? undefined
         );
+
+        clearInterval(progressInterval);
+        setUploadProgress(100);
 
         if (response && (response.success || response.userId)) {
           showSuccessAlert('프로필 이미지가 업로드되었습니다.');
@@ -173,6 +259,9 @@ export default function MyPageScreen({ route }: any) {
       }
     } catch (error) {
       showErrorAlert('프로필 이미지 업로드 중 오류가 발생했습니다.');
+    } finally {
+      setUploadingProfileImage(false);
+      setUploadProgress(0);
     }
   };
 
@@ -196,9 +285,20 @@ export default function MyPageScreen({ route }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {targetUserId ? `${groupNm || 'Group'} - User Profile` : 'My Page'}
-      </Text>
+      <View style={styles.titleContainer}>
+        <Text style={styles.title}>
+          {targetUserId ? `${groupNm || 'Group'} - User Profile` : 'My Page'}
+        </Text>
+        {!targetUserId && user && user.userId === String(currentUserId) && (
+          <TouchableOpacity 
+            style={styles.deleteButton} 
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteButtonText}>회원 탈퇴</Text>
+          </TouchableOpacity>
+        )}
+      </View>
       
       <View style={styles.userCard}>
         <View style={styles.profileSection}>
@@ -207,6 +307,7 @@ export default function MyPageScreen({ route }: any) {
             style={styles.profileImageContainer}
             onPress={targetUserId ? undefined : handleProfileImageUpload}
             activeOpacity={targetUserId ? 1 : 0.7}
+            disabled={uploadingProfileImage}
           >
             <Image
               source={getProfileImageUrl(user.pictureNm)}
@@ -215,7 +316,9 @@ export default function MyPageScreen({ route }: any) {
             {/* 본인 프로필일 때만 변경 오버레이 표시 */}
             {!targetUserId && (
               <View style={styles.profileImageOverlay}>
-                <Text style={styles.profileImageOverlayText}>변경</Text>
+                <Text style={styles.profileImageOverlayText}>
+                  {uploadingProfileImage ? '업로드 중...' : '변경'}
+                </Text>
               </View>
             )}
           </TouchableOpacity>
@@ -297,6 +400,13 @@ export default function MyPageScreen({ route }: any) {
           </View>
         </View>
       </View>
+      
+      <ProgressBar 
+        visible={uploadingProfileImage} 
+        message="프로필 이미지를 업로드하는 중..." 
+        progress={uploadProgress}
+        showPercentage={true}
+      />
     </View>
   );
 }

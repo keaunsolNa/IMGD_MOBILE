@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import * as ImagePicker from 'expo-image-picker';
+import ProgressBar from '@/components/ProgressBar';
 
 type GroupCard = {
   groupId?: number;
@@ -53,6 +54,7 @@ export default function FileScreen() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   // 이미지 뷰어 관련 상태
   const [showImageViewer, setShowImageViewer] = useState(false);
@@ -500,7 +502,21 @@ export default function FileScreen() {
     }
 
     setUploadingFile(true);
+    setUploadProgress(0);
+    
     try {
+      // 프로그레스 시뮬레이션 (실제 업로드 진행률을 추적하기 어려우므로 단계별로 진행)
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const newProgress = prev + 10;
+          if (newProgress >= 90) {
+            clearInterval(progressInterval);
+            return 90; // 90%에서 멈춤 (실제 완료 시 100%로 설정)
+          }
+          return newProgress;
+        });
+      }, 200);
+
       const response = await FileAPI.makeFile(
         selectedFile.uri,
         {
@@ -511,6 +527,12 @@ export default function FileScreen() {
         },
         accessToken || undefined
       );
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+
+      // 프로그래스 바를 잠시 더 표시하기 위해 지연
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // ApiResponse 구조 확인 (fetch API 사용으로 직접 응답)
       if (response.success) {
@@ -544,6 +566,7 @@ export default function FileScreen() {
       }
     } finally {
       setUploadingFile(false);
+      setUploadProgress(0);
     }
   };
 
@@ -768,27 +791,39 @@ export default function FileScreen() {
                  <Text style={styles.selectFileButtonText}>📁 파일 선택</Text>
                </TouchableOpacity>
              ) : (
-                               <View style={styles.selectedFileInfo}>
-                  <Text style={styles.selectedFileName}>선택된 파일: {selectedFile.fileName || '알 수 없는 파일'}</Text>
-                  
-                  <View style={styles.fileActionButtons}>
-                   <TouchableOpacity 
-                     style={styles.changeFileButton}
-                     onPress={handleSelectFile}
-                   >
-                     <Text style={styles.changeFileButtonText}>파일 변경</Text>
-                   </TouchableOpacity>
-                   
-                   <TouchableOpacity 
-                     style={styles.uploadConfirmButton}
-                     onPress={handleUploadFile}
-                     disabled={uploadingFile}
-                   >
-                     <Text style={styles.uploadConfirmButtonText}>
-                       {uploadingFile ? '업로드 중...' : '업로드'}
-                     </Text>
-                   </TouchableOpacity>
-                 </View>
+               <View style={styles.selectedFileInfo}>
+                 <Text style={styles.selectedFileName}>선택된 파일: {selectedFile.fileName || '알 수 없는 파일'}</Text>
+                 
+                 {/* 업로드 중일 때 프로그래스 바 표시 */}
+                 {uploadingFile ? (
+                   <View style={styles.uploadProgressContainer}>
+                     <ProgressBar 
+                       visible={uploadingFile} 
+                       message="파일을 업로드하는 중..." 
+                       progress={uploadProgress}
+                       showPercentage={true}
+                     />
+                   </View>
+                 ) : (
+                   <View style={styles.fileActionButtons}>
+                     <TouchableOpacity 
+                       style={styles.changeFileButton}
+                       onPress={handleSelectFile}
+                     >
+                       <Text style={styles.changeFileButtonText}>파일 변경</Text>
+                     </TouchableOpacity>
+                     
+                     <TouchableOpacity 
+                       style={styles.uploadConfirmButton}
+                       onPress={handleUploadFile}
+                       disabled={uploadingFile}
+                     >
+                       <Text style={styles.uploadConfirmButtonText}>
+                         {uploadingFile ? '업로드 중...' : '업로드'}
+                       </Text>
+                     </TouchableOpacity>
+                   </View>
+                 )}
                </View>
              )}
            </View>
