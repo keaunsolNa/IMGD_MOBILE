@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Image, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Image, Pressable, Platform } from 'react-native';
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
 import { validateFolderName, validateFolderNameInput } from '@/utils/folderValidation';
 import { styles } from '@/styles/screens/file/FileScreen';
@@ -8,7 +8,6 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import * as ImagePicker from 'expo-image-picker';
-import ProgressBar from '@/components/ProgressBar';
 
 type GroupCard = {
   groupId?: number;
@@ -55,6 +54,10 @@ export default function FileScreen() {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // 드래그 앤 드롭 관련 상태
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
   
   // 이미지 뷰어 관련 상태
   const [showImageViewer, setShowImageViewer] = useState(false);
@@ -201,6 +204,10 @@ export default function FileScreen() {
           if (response.data.success) {
             window.alert('파일이 삭제되었습니다.');
             
+            // 이미지 뷰어 모달 닫기
+            setShowImageViewer(false);
+            setSelectedImageFile(null);
+            
             // 삭제된 파일의 parentId로 이동
             const parentId = response.data.data.parentId;
             if (parentId) {
@@ -259,6 +266,10 @@ export default function FileScreen() {
                 if (response.data.success) {
                   showSuccessAlert('파일이 삭제되었습니다.');
                   
+                  // 이미지 뷰어 모달 닫기
+                  setShowImageViewer(false);
+                  setSelectedImageFile(null);
+                  
                   // 삭제된 파일의 parentId로 이동
                   const parentId = response.data.data.parentId;
                   if (parentId) {
@@ -305,6 +316,46 @@ export default function FileScreen() {
               }
         }
       );
+    }
+  };
+
+  // 파일 다운로드
+  const handleDownloadFile = async (file: FileTableDTO) => {
+    try {
+      // 웹 환경에서만 다운로드 기능 제공
+      if (Platform.OS !== 'web') {
+        showErrorAlert('다운로드 기능은 웹 환경에서만 사용할 수 있습니다.');
+        return;
+      }
+
+      const imageUrl = `${API_BASE_URL}/GROUP_IMG/${file.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}`;
+      
+      // 파일명에서 확장자 추출
+      const fileExtension = file.fileOrgNm.split('.').pop() || 'jpg';
+      const fileName = file.fileOrgNm || `image_${Date.now()}.${fileExtension}`;
+      
+      // fetch를 사용하여 이미지 다운로드
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error('이미지를 불러올 수 없습니다.');
+      }
+      
+      const blob = await response.blob();
+      
+      // 다운로드 링크 생성 및 클릭
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      showSuccessAlert('파일이 다운로드되었습니다.');
+    } catch (error) {
+      console.error('파일 다운로드 오류:', error);
+      showErrorAlert('파일 다운로드 중 오류가 발생했습니다.');
     }
   };
 
@@ -493,6 +544,84 @@ export default function FileScreen() {
       showErrorAlert('파일을 선택할 수 없습니다.');
     }
   };
+
+  // 드래그 앤 드롭 이벤트 핸들러들 (웹 환경에서만 동작)
+  const handleDragEnter = useCallback((e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev + 1);
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev - 1);
+    if (dragCounter <= 1) {
+      setIsDragOver(false);
+    }
+  }, [dragCounter]);
+
+  const handleDragOver = useCallback((e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback(async (e: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setDragCounter(0);
+
+    if (!selectedGroup?.groupId || !subject) {
+      showErrorAlert('그룹을 선택해주세요.');
+      return;
+    }
+
+    const files = Array.from(e.dataTransfer.files) as File[];
+    if (files.length === 0) {
+      return;
+    }
+
+    // 첫 번째 파일만 처리 (여러 파일 드롭 시)
+    const file = files[0];
+    
+    // 파일 타입 검증
+    if (!file.type.startsWith('image/')) {
+      showErrorAlert('이미지 파일만 업로드할 수 있습니다.');
+      return;
+    }
+
+    // 파일 크기 검증 (50MB 제한)
+    if (file.size > 50 * 1024 * 1024) {
+      showErrorAlert('파일 크기는 50MB를 초과할 수 없습니다.');
+      return;
+    }
+
+    // 파일 확장자 검증
+    const fileName = file.name.toLowerCase();
+    const validExtensions = ['.jpg', '.jpeg', '.png'];
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!hasValidExtension) {
+      showErrorAlert('JPG, PNG 파일만 업로드할 수 있습니다.');
+      return;
+    }
+
+    // 파일을 ImagePicker 형식으로 변환
+    const fileInfo = {
+      uri: URL.createObjectURL(file),
+      fileName: file.name,
+      fileSize: file.size,
+      displaySize: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+      type: file.type
+    };
+
+    setSelectedFile(fileInfo);
+    setShowUploadModal(true);
+  }, [selectedGroup, subject]);
 
   // 파일 업로드
   const handleUploadFile = async () => {
@@ -717,12 +846,26 @@ export default function FileScreen() {
              <Text style={styles.imageViewerTitle}>
                {selectedImageFile?.fileOrgNm || '이미지 뷰어'}
              </Text>
-             <TouchableOpacity 
-               onPress={() => setShowImageViewer(false)}
-               style={styles.imageViewerCloseButton}
-             >
-               <Text style={styles.imageViewerCloseButtonText}>✕</Text>
-             </TouchableOpacity>
+             <View style={styles.imageViewerActions}>
+               <TouchableOpacity 
+                 onPress={() => selectedImageFile && handleDownloadFile(selectedImageFile)}
+                 style={styles.imageViewerDownloadButton}
+               >
+                 <Text style={styles.imageViewerDownloadButtonText}>⬇️</Text>
+               </TouchableOpacity>
+               <TouchableOpacity 
+                 onPress={() => selectedImageFile && handleDeleteFile(selectedImageFile)}
+                 style={styles.imageViewerDeleteButton}
+               >
+                 <Text style={styles.imageViewerDeleteButtonText}>🗑️</Text>
+               </TouchableOpacity>
+               <TouchableOpacity 
+                 onPress={() => setShowImageViewer(false)}
+                 style={styles.imageViewerCloseButton}
+               >
+                 <Text style={styles.imageViewerCloseButtonText}>✕</Text>
+               </TouchableOpacity>
+             </View>
            </View>
            
            <View style={styles.imageViewerBody}>
@@ -797,12 +940,11 @@ export default function FileScreen() {
                  {/* 업로드 중일 때 프로그래스 바 표시 */}
                  {uploadingFile ? (
                    <View style={styles.uploadProgressContainer}>
-                     <ProgressBar 
-                       visible={uploadingFile} 
-                       message="파일을 업로드하는 중..." 
-                       progress={uploadProgress}
-                       showPercentage={true}
-                     />
+                     <Text style={styles.uploadingText}>파일을 업로드하는 중...</Text>
+                     <View style={styles.progressBarContainer}>
+                       <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
+                     </View>
+                     <Text style={styles.progressText}>{uploadProgress}%</Text>
                    </View>
                  ) : (
                    <View style={styles.fileActionButtons}>
@@ -847,84 +989,126 @@ export default function FileScreen() {
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
                  <View style={styles.headerContent}>
-           <Text style={styles.title}>
-             {directoryStack.length > 0 
-               ? `${selectedGroup?.groupNm} > ${directoryStack.map(item => item.name).join(' > ')}`
-               : selectedGroup?.groupNm
-             }
-           </Text>
-           <Text style={styles.description}>파일 및 디렉토리 목록</Text>
-           {directoryStack.length > 0 && (
-             <TouchableOpacity onPress={handleBackToParent} style={styles.backToParentButton}>
-               <Text style={styles.backToParentButtonText}>↑ 상위 폴더</Text>
-             </TouchableOpacity>
-           )}
+           <View style={styles.titleRow}>
+             <Text style={styles.title}>
+               {directoryStack.length > 0 
+                 ? `${selectedGroup?.groupNm} > ${directoryStack.map(item => item.name).join(' > ')}`
+                 : selectedGroup?.groupNm
+               }
+             </Text>
+             {directoryStack.length > 0 && (
+               <TouchableOpacity onPress={handleBackToParent} style={styles.backToParentButton}>
+                 <Text style={styles.backToParentButtonText}>↑ 상위 폴더</Text>
+               </TouchableOpacity>
+             )}
+           </View>
          </View>
       </View>
+      
+      {/* 드래그 앤 드롭 영역 (웹 환경에서만 표시, 하위 폴더에서만 활성화) */}
+      {Platform.OS === 'web' && directoryStack.length > 0 && (
+        <div
+          style={{
+            backgroundColor: isDragOver ? '#dbeafe' : '#f8fafc',
+            border: isDragOver ? '2px solid #3b82f6' : '2px dashed #e2e8f0',
+            borderRadius: '12px',
+            padding: '16px',
+            marginBottom: '20px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: '60px',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'all 0.2s ease-in-out',
+            transform: isDragOver ? 'scale(1.02)' : 'scale(1)',
+          }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <div style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#64748b',
+            textAlign: 'center',
+            marginBottom: '4px',
+          }}>
+            {isDragOver ? '📁 파일을 여기에 놓으세요' : '📁 파일을 드래그하여 업로드하세요'}
+          </div>
+          <div style={{
+            fontSize: '12px',
+            color: '#94a3b8',
+            textAlign: 'center',
+          }}>
+            JPG, PNG 파일만 지원 (최대 50MB)
+          </div>
+        </div>
+      )}
       
              {/* 폴더 생성 및 파일 업로드 섹션 - 상위 폴더가 있을 때만 표시 */}
        {directoryStack.length > 0 && (
          <View style={styles.createFolderSection}>
            <View style={styles.createFolderRow}>
-             <TouchableOpacity 
-               style={[
-                 styles.createFolderButton,
-                 showCreateFolder ? styles.createFolderButtonActive : styles.createFolderButtonInactive
-               ]}
-               onPress={showCreateFolder ? handleCreateFolder : toggleCreateFolder}
-               disabled={creatingFolder}
-             >
-               <Text style={[
-                 styles.createFolderButtonText,
-                 showCreateFolder ? styles.createFolderButtonTextActive : styles.createFolderButtonTextInactive
-               ]}>
-                 {creatingFolder ? '생성 중...' : (showCreateFolder ? '생성' : '폴더 생성')}
-               </Text>
-             </TouchableOpacity>
+             <View style={styles.leftSection}>
+               <TouchableOpacity 
+                 style={[
+                   styles.createFolderButton,
+                   showCreateFolder ? styles.createFolderButtonActive : styles.createFolderButtonInactive
+                 ]}
+                 onPress={showCreateFolder ? handleCreateFolder : toggleCreateFolder}
+                 disabled={creatingFolder}
+               >
+                 <Text style={[
+                   styles.createFolderButtonText,
+                   showCreateFolder ? styles.createFolderButtonTextActive : styles.createFolderButtonTextInactive
+                 ]}>
+                   {creatingFolder ? '생성 중...' : (showCreateFolder ? '생성' : '폴더 생성')}
+                 </Text>
+               </TouchableOpacity>
+               
+               {showCreateFolder && (
+                 <View style={styles.folderNameInputContainer}>
+                   <TextInput
+                     style={[
+                       styles.folderNameInput,
+                       !folderValidation.isValid && styles.folderNameInputError
+                     ]}
+                     placeholder="폴더 이름을 입력하세요"
+                     value={newFolderName}
+                     onChangeText={handleFolderNameChange}
+                     autoFocus={true}
+                     onSubmitEditing={handleCreateFolder}
+                   />
+                   
+                   {/* 유효성 검사 에러 메시지 */}
+                   {!folderValidation.isValid && folderValidation.errorMessage && (
+                     <View style={styles.validationErrorContainer}>
+                       <Text style={styles.validationErrorText}>
+                         {folderValidation.errorMessage}
+                       </Text>
+                       
+                       {/* 정리된 이름 제안 */}
+                       {folderValidation.sanitizedSuggestion && (
+                         <View style={styles.sanitizedSuggestionContainer}>
+                           <Text style={styles.sanitizedSuggestionText}>
+                             제안: {folderValidation.sanitizedSuggestion}
+                           </Text>
+                           <TouchableOpacity 
+                             style={styles.applySuggestionButton}
+                             onPress={handleApplySanitizedName}
+                           >
+                             <Text style={styles.applySuggestionButtonText}>적용</Text>
+                           </TouchableOpacity>
+                         </View>
+                       )}
+                     </View>
+                   )}
+                 </View>
+               )}
+             </View>
              
-             {showCreateFolder && (
-               <View style={styles.folderNameInputContainer}>
-                 <TextInput
-                   style={[
-                     styles.folderNameInput,
-                     !folderValidation.isValid && styles.folderNameInputError
-                   ]}
-                   placeholder="폴더 이름을 입력하세요"
-                   value={newFolderName}
-                   onChangeText={handleFolderNameChange}
-                   autoFocus={true}
-                   onSubmitEditing={handleCreateFolder}
-                 />
-                 
-                 {/* 유효성 검사 에러 메시지 */}
-                 {!folderValidation.isValid && folderValidation.errorMessage && (
-                   <View style={styles.validationErrorContainer}>
-                     <Text style={styles.validationErrorText}>
-                       {folderValidation.errorMessage}
-                     </Text>
-                     
-                     {/* 정리된 이름 제안 */}
-                     {folderValidation.sanitizedSuggestion && (
-                       <View style={styles.sanitizedSuggestionContainer}>
-                         <Text style={styles.sanitizedSuggestionText}>
-                           제안: {folderValidation.sanitizedSuggestion}
-                         </Text>
-                         <TouchableOpacity 
-                           style={styles.applySuggestionButton}
-                           onPress={handleApplySanitizedName}
-                         >
-                           <Text style={styles.applySuggestionButtonText}>적용</Text>
-                         </TouchableOpacity>
-                       </View>
-                     )}
-                   </View>
-                 )}
-               </View>
-             )}
-           </View>
-           
-           {/* 파일 업로드 버튼 */}
-           <View style={styles.uploadSection}>
+             {/* 파일 업로드 버튼 (우측) */}
              <TouchableOpacity 
                style={styles.uploadButton}
                onPress={() => setShowUploadModal(true)}
@@ -935,86 +1119,116 @@ export default function FileScreen() {
          </View>
        )}
       
-      <ScrollView style={styles.scrollView}>
-        {loadingFiles ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>파일 목록을 불러오는 중...</Text>
-          </View>
-        ) : filesAndDirectories.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>파일이나 디렉토리가 없습니다</Text>
-          </View>
-        ) : (
-          filesAndDirectories.map((item, idx) => (
-            <View key={idx} style={styles.fileCard}>
-              <View style={styles.fileCardContent}>
-                <TouchableOpacity 
-                  style={styles.fileClickableArea}
-                  onPress={() => item.type === 'DIR' ? handleDirectoryClick(item) : handleFileClick(item)}
-                  disabled={false}
-                >
-                  <View style={styles.fileHeader}>
-                    {item.type === 'DIR' ? (
-                      <View style={styles.directoryIcon}>
-                        <Text style={styles.fileIconText}>📁</Text>
+      {loadingFiles ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>파일 목록을 불러오는 중...</Text>
+        </View>
+      ) : filesAndDirectories.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>파일이나 디렉토리가 없습니다</Text>
+        </View>
+      ) : (
+        <View style={styles.splitContainer}>
+          {/* 폴더 목록 (좌측) - 폴더가 있을 때만 표시 */}
+          {filesAndDirectories.filter(item => item.type === 'DIR').length > 0 && (
+            <View style={[
+              styles.folderSection,
+              filesAndDirectories.filter(item => item.type === 'FILE').length === 0 && styles.fullWidth
+            ]}>
+              <Text style={styles.sectionTitle}>📁 폴더</Text>
+              <ScrollView style={styles.sectionScrollView}>
+                {filesAndDirectories.filter(item => item.type === 'DIR').map((item, idx) => (
+                  <View key={`dir-${idx}`} style={styles.fileCard}>
+                    <View style={styles.fileCardContent}>
+                      <TouchableOpacity 
+                        style={styles.fileClickableArea}
+                        onPress={() => handleDirectoryClick(item)}
+                        disabled={false}
+                      >
+                        <View style={styles.fileHeader}>
+                          <View style={styles.directoryIcon}>
+                            <Text style={styles.fileIconText}>📁</Text>
+                          </View>
+                          <View style={styles.fileMainInfo}>
+                            <View style={styles.fileNameRow}>
+                              <Text style={styles.fileName}>{item.fileNm}</Text>
+                            </View>
+                            <Text style={styles.fileType}>디렉토리</Text>
+                          </View>
+                        </View>
+                        <View style={styles.fileDetails}>
+                          <View style={styles.detailItem}>
+                            <Text style={styles.detailLabel}>생성일</Text>
+                            <Text style={styles.detailValue}>{item.regDtm}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                      
+                      {/* 폴더 삭제 버튼 */}
+                      <View style={styles.deleteButtonContainer}>
+                        <Pressable
+                          style={styles.deleteButton}
+                          onPress={() => handleDeleteFolder(item)}
+                        >
+                          <Text style={styles.deleteButtonText}>🗑️</Text>
+                        </Pressable>
                       </View>
-                    ) : (
-                      <View style={styles.fileIcon}>
-                        <Image
-                          source={{ uri: `${API_BASE_URL}/GROUP_IMG/${item.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
-                          style={styles.fileThumbnail}
-                          resizeMode="cover"
-                          onError={() => {
-                            // 이미지 로드 실패 시 기본 아이콘 표시
-                          }}
-                        />
-                      </View>
-                    )}
-                    <View style={styles.fileMainInfo}>
-                      <View style={styles.fileNameRow}>
-                        <Text style={styles.fileName}>
-                          {item.type === 'DIR' ? item.fileNm : item.fileOrgNm}
-                        </Text>
-                      </View>
-                      <Text style={styles.fileType}>
-                        {item.type === 'DIR' ? '디렉토리 (탭하여 열기)' : '이미지 파일'}
-                      </Text>
                     </View>
                   </View>
-                  <View style={styles.fileDetails}>
-                    <View style={styles.detailItem}>
-                      <Text style={styles.detailLabel}>생성일</Text>
-                      <Text style={styles.detailValue}>{item.regDtm}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-                
-                {/* 폴더 삭제 버튼 (폴더인 경우에만 표시) */}
-                {item.type === 'DIR' && (
-                  <View style={styles.deleteButtonContainer}>
-                    <Pressable
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteFolder(item)}
-                    >
-                      <Text style={styles.deleteButtonText}>🗑️</Text>
-                    </Pressable>
-                  </View>
-                )}
-                {item.type === 'FILE' && (
-                  <View style={styles.deleteButtonContainer}>
-                    <Pressable 
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteFile(item)}
-                    >
-                      <Text style={styles.deleteButtonText}>🗑️</Text>
-                    </Pressable>
-                  </View>
-                )}
-              </View>
+                ))}
+              </ScrollView>
             </View>
-          ))
-        )}
-      </ScrollView>
+          )}
+
+          {/* 파일 목록 (우측) - 파일이 있을 때만 표시 */}
+          {filesAndDirectories.filter(item => item.type === 'FILE').length > 0 && (
+            <View style={[
+              styles.fileSection,
+              filesAndDirectories.filter(item => item.type === 'DIR').length === 0 && styles.fullWidth
+            ]}>
+              <Text style={styles.sectionTitle}>📄 파일</Text>
+              <ScrollView style={styles.sectionScrollView}>
+                {filesAndDirectories.filter(item => item.type === 'FILE').map((item, idx) => (
+                  <View key={`file-${idx}`} style={styles.fileCard}>
+                    <View style={styles.fileCardContent}>
+                      <TouchableOpacity 
+                        style={styles.fileClickableArea}
+                        onPress={() => handleFileClick(item)}
+                        disabled={false}
+                      >
+                        <View style={styles.fileHeader}>
+                          <View style={styles.fileIcon}>
+                            <Image
+                              source={{ uri: `${API_BASE_URL}/GROUP_IMG/${item.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}` }}
+                              style={styles.fileThumbnail}
+                              resizeMode="cover"
+                              onError={() => {
+                                // 이미지 로드 실패 시 기본 아이콘 표시
+                              }}
+                            />
+                          </View>
+                          <View style={styles.fileMainInfo}>
+                            <View style={styles.fileNameRow}>
+                              <Text style={styles.fileName}>{item.fileOrgNm}</Text>
+                            </View>
+                            <Text style={styles.fileType}>이미지 파일</Text>
+                          </View>
+                        </View>
+                        <View style={styles.fileDetails}>
+                          <View style={styles.detailItem}>
+                            <Text style={styles.detailLabel}>생성일</Text>
+                            <Text style={styles.detailValue}>{item.regDtm}</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      )}
     </>
   );
 
@@ -1023,6 +1237,18 @@ export default function FileScreen() {
        {viewMode === 'groups' ? renderGroupsView() : renderFilesView()}
        {renderUploadModal()}
        {renderImageViewerModal()}
+       {/* 전역 프로그래스바 - 모달 위에 표시 */}
+       {uploadingFile && (
+         <View style={styles.globalProgressOverlay}>
+           <View style={styles.globalProgressContainer}>
+             <Text style={styles.globalProgressText}>파일을 업로드하는 중...</Text>
+             <View style={styles.globalProgressBarContainer}>
+               <View style={[styles.globalProgressBar, { width: `${uploadProgress}%` }]} />
+             </View>
+             <Text style={styles.globalProgressPercentage}>{uploadProgress}%</Text>
+           </View>
+         </View>
+       )}
      </View>
    );
 }

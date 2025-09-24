@@ -14,8 +14,12 @@ export const styles = StyleSheet.create({
   headerContent: {
     alignItems: 'center',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   backToParentButton: {
-    marginTop: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: '#f59e0b',
@@ -59,6 +63,59 @@ export const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  splitContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+  },
+  folderSection: {
+    flex: 3,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  fileSection: {
+    flex: 7,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+  },
+  fullWidth: {
+    flex: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  sectionScrollView: {
+    flex: 1,
+  },
+  
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -245,6 +302,13 @@ export const styles = StyleSheet.create({
   createFolderRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
     gap: 12,
   },
   createFolderButton: {
@@ -348,20 +412,17 @@ export const styles = StyleSheet.create({
   },
   
   // 파일 업로드 관련 스타일
-  uploadSection: {
-    marginTop: 16,
-    paddingHorizontal: 4,
-  },
   uploadButton: {
     backgroundColor: '#8b5cf6',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 120,
   },
   uploadButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: 'white',
   },
@@ -439,6 +500,85 @@ export const styles = StyleSheet.create({
   uploadProgressContainer: {
     marginTop: 16,
     alignItems: 'center',
+  },
+  uploadingText: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 4,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#3b82f6',
+    fontWeight: '600',
+  },
+  
+  // 전역 프로그래스바 스타일 (모달 위에 표시)
+  globalProgressOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  globalProgressContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    margin: 20,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+    alignItems: 'center',
+  },
+  globalProgressText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  globalProgressBarContainer: {
+    width: '100%',
+    height: 12,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  globalProgressBar: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+    borderRadius: 6,
+  },
+  globalProgressPercentage: {
+    fontSize: 14,
+    color: '#3b82f6',
+    fontWeight: '700',
   },
   selectedFileName: {
     fontSize: 16,
@@ -532,6 +672,35 @@ export const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     flex: 1,
+  },
+  imageViewerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  imageViewerDownloadButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  imageViewerDownloadButtonText: {
+    fontSize: 16,
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  imageViewerDeleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  imageViewerDeleteButtonText: {
+    fontSize: 16,
+    color: '#dc2626',
+    fontWeight: '600',
   },
   imageViewerCloseButton: {
     padding: 8,
