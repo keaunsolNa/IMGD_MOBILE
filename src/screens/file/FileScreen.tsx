@@ -6,6 +6,7 @@ import { styles } from '@/styles/screens/file/FileScreen';
 import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
+import { store } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -328,31 +329,58 @@ export default function FileScreen() {
         return;
       }
 
-      const imageUrl = `${API_BASE_URL}/GROUP_IMG/${file.filePath.replace(/^C:\\IMGD\\GROUP_IMG\\/, '').replace(/\\/g, '/')}`;
+      if (!file.fileId) {
+        showErrorAlert('파일 ID가 없습니다.');
+        return;
+      }
+
+      // 백엔드 다운로드 API 호출
+      const downloadUrl = `${API_BASE_URL}/api/file/downloadFile?fileId=${file.fileId}`;
       
-      // 파일명에서 확장자 추출
-      const fileExtension = file.fileOrgNm.split('.').pop() || 'jpg';
-      const fileName = file.fileOrgNm || `image_${Date.now()}.${fileExtension}`;
-      
-      // fetch를 사용하여 이미지 다운로드
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error('이미지를 불러올 수 없습니다.');
+      // fetch로 직접 다운로드 시도 (인증 헤더 포함)
+      try {
+        // Redux store에서 토큰 가져오기
+        const state = store.getState();
+        const token = state.auth.accessToken;
+        
+        const headers: HeadersInit = {
+          'Accept': '*/*',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(downloadUrl, {
+          method: 'GET',
+          headers: headers,
+          credentials: 'include', // 쿠키 포함
+        });
+        
+        if (!response.ok) {
+          console.error(`HTTP ${response.status}: ${response.statusText}`);
+          showErrorAlert('파일 다운로드에 실패했습니다.');
+          return;
+        }
+        
+        const blob = await response.blob();
+        
+        // 다운로드 링크 생성
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.fileOrgNm || `file_${file.fileId}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+      } catch (fetchError) {
+        console.error('fetch 오류:', fetchError);
+        showErrorAlert('파일 다운로드에 실패했습니다.');
+        return;
       }
       
-      const blob = await response.blob();
-      
-      // 다운로드 링크 생성 및 클릭
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-      
-      showSuccessAlert('파일이 다운로드되었습니다.');
     } catch (error) {
       console.error('파일 다운로드 오류:', error);
       showErrorAlert('파일 다운로드 중 오류가 발생했습니다.');
