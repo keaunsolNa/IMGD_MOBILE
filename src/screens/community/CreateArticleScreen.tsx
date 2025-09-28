@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,10 +7,17 @@ import {
   ScrollView, 
   KeyboardAvoidingView,
   Platform,
-  FlatList
+  FlatList,
+  Image,
+  Alert
 } from 'react-native';
+import { WebView } from 'react-native-webview';
+import * as ImagePicker from 'expo-image-picker';
+
+// 웹 환경에서 CKEditor 대신 간단한 HTML 에디터 사용
 import { styles } from '@/styles/screens/community/CreateArticleScreen';
 import { CommunityAPI, Tag, ArticleWithTags } from '@/services/community';
+import { FileAPI } from '@/services/api';
 import CreateTagModal from './CreateTagModal';
 import { showErrorAlert, showSuccessAlert, showConfirmAlert } from '@/utils/alert';
 
@@ -29,6 +36,14 @@ export default function CreateArticleScreen({ navigation, route }: any) {
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(true);
   const [showTagModal, setShowTagModal] = useState(false);
+  
+  // 파일 첨부 관련 상태
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  
+  // 웹 에디터 관련 상태
+  const [useWebEditor, setUseWebEditor] = useState(true);
+  const webViewRef = useRef<WebView>(null);
 
   useEffect(() => {
     loadAvailableTags();
@@ -72,6 +87,262 @@ export default function CreateArticleScreen({ navigation, route }: any) {
     await loadAvailableTags();
   };
 
+  // 파일 첨부 기능
+  const handleAttachFile = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newFiles = result.assets.map(asset => ({
+          uri: asset.uri,
+          name: asset.fileName || `file_${Date.now()}.jpg`,
+          type: asset.type || 'image/jpeg',
+          size: asset.fileSize || 0,
+        }));
+        setAttachedFiles(prev => [...prev, ...newFiles]);
+      }
+    } catch (error) {
+      console.error('파일 선택 실패:', error);
+      showErrorAlert('파일 선택에 실패했습니다.');
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // 웹 환경용 에디터 컴포넌트
+  const WebEditor = () => {
+    if (Platform.OS === 'web') {
+      // 웹 환경에서는 간단한 HTML 에디터 사용
+      return (
+        <View style={styles.webEditorContainer}>
+          <View style={styles.toolbar}>
+            <TouchableOpacity 
+              style={styles.toolbarButton}
+              onPress={() => {
+                const newContent = content + '<b></b>';
+                setContent(newContent);
+              }}
+            >
+              <Text style={styles.toolbarButtonText}>B</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolbarButton}
+              onPress={() => {
+                const newContent = content + '<i></i>';
+                setContent(newContent);
+              }}
+            >
+              <Text style={styles.toolbarButtonText}>I</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolbarButton}
+              onPress={() => {
+                const newContent = content + '<u></u>';
+                setContent(newContent);
+              }}
+            >
+              <Text style={styles.toolbarButtonText}>U</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolbarButton}
+              onPress={() => {
+                const newContent = content + '<br/>• ';
+                setContent(newContent);
+              }}
+            >
+              <Text style={styles.toolbarButtonText}>•</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.toolbarButton}
+              onPress={() => {
+                const url = prompt('링크 URL을 입력하세요:');
+                if (url) {
+                  const newContent = content + `<a href="${url}">링크</a>`;
+                  setContent(newContent);
+                }
+              }}
+            >
+              <Text style={styles.toolbarButtonText}>🔗</Text>
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={styles.webEditorInput}
+            value={content}
+            onChangeText={setContent}
+            placeholder="내용을 입력하세요 (HTML 태그 사용 가능)"
+            placeholderTextColor="#999"
+            multiline
+            textAlignVertical="top"
+            maxLength={5000}
+          />
+        </View>
+      );
+    } else {
+      // 네이티브 환경에서는 WebView 사용
+      return (
+        <View style={styles.webEditorContainer}>
+          <WebView
+            ref={webViewRef}
+            source={{ html: getWebEditorHTML() }}
+            style={styles.webEditor}
+            onMessage={handleWebViewMessage}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            startInLoadingState={false}
+            scalesPageToFit={false}
+          />
+        </View>
+      );
+    }
+  };
+
+  // 웹 에디터 HTML 생성 (네이티브용)
+  const getWebEditorHTML = () => {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            margin: 0;
+            padding: 10px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f5f5;
+          }
+          .editor-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+          }
+          .toolbar {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+          }
+          .toolbar button {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+          }
+          .toolbar button:hover {
+            background: #e9ecef;
+          }
+          .toolbar button.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+          }
+          .editor {
+            min-height: 200px;
+            padding: 12px;
+            border: none;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.5;
+          }
+          .editor:empty:before {
+            content: "내용을 입력하세요...";
+            color: #999;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="editor-container">
+          <div class="toolbar">
+            <button onclick="formatText('bold')" title="굵게">B</button>
+            <button onclick="formatText('italic')" title="기울임">I</button>
+            <button onclick="formatText('underline')" title="밑줄">U</button>
+            <button onclick="formatText('strikeThrough')" title="취소선">S</button>
+            <button onclick="insertList('ul')" title="목록">•</button>
+            <button onclick="insertList('ol')" title="번호목록">1.</button>
+            <button onclick="insertLink()" title="링크">🔗</button>
+            <button onclick="insertImage()" title="이미지">🖼️</button>
+            <button onclick="clearFormat()" title="서식지우기">🧹</button>
+          </div>
+          <div class="editor" contenteditable="true" id="editor"></div>
+        </div>
+        
+        <script>
+          function formatText(command) {
+            document.execCommand(command, false, null);
+            document.getElementById('editor').focus();
+          }
+          
+          function insertList(type) {
+            document.execCommand('insertUnorderedList', false, null);
+            document.getElementById('editor').focus();
+          }
+          
+          function insertLink() {
+            const url = prompt('링크 URL을 입력하세요:');
+            if (url) {
+              document.execCommand('createLink', false, url);
+            }
+            document.getElementById('editor').focus();
+          }
+          
+          function insertImage() {
+            const url = prompt('이미지 URL을 입력하세요:');
+            if (url) {
+              const img = document.createElement('img');
+              img.src = url;
+              img.style.maxWidth = '100%';
+              img.style.height = 'auto';
+              document.execCommand('insertHTML', false, img.outerHTML);
+            }
+            document.getElementById('editor').focus();
+          }
+          
+          function clearFormat() {
+            document.execCommand('removeFormat', false, null);
+            document.getElementById('editor').focus();
+          }
+          
+          // 에디터 내용 변경 시 React Native로 전송
+          document.getElementById('editor').addEventListener('input', function() {
+            const content = this.innerHTML;
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'contentChange',
+              content: content
+            }));
+          });
+          
+          // 초기 내용 설정
+          document.getElementById('editor').innerHTML = '${content.replace(/'/g, "\\'")}';
+        </script>
+      </body>
+      </html>
+    `;
+  };
+
+  // 웹 에디터에서 내용 변경 처리
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'contentChange') {
+        setContent(data.content);
+      }
+    } catch (error) {
+      console.error('웹뷰 메시지 처리 실패:', error);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!title.trim()) {
       showErrorAlert('제목을 입력해주세요.');
@@ -84,6 +355,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
 
     try {
       setLoading(true);
+      setUploadingFiles(true);
       
       // 선택된 태그들을 Tag 객체 배열로 변환
       const selectedTags = tags.map(tagName => {
@@ -112,7 +384,12 @@ export default function CreateArticleScreen({ navigation, route }: any) {
           month: 'long',
           day: 'numeric'
         }),
-        tagList: selectedTags // tags 대신 tagList 사용
+        tagList: selectedTags, // tags 대신 tagList 사용
+        // attachedFiles: attachedFiles.map(file => ({
+        //   fileName: file.name,
+        //   fileId: Date.now() + Math.random(), // 임시 ID
+        //   fileSize: file.size
+        // }))
       };
       
       const response = await CommunityAPI.createArticle(articleData);
@@ -140,6 +417,7 @@ export default function CreateArticleScreen({ navigation, route }: any) {
       showErrorAlert('게시글 작성에 실패했습니다.');
     } finally {
       setLoading(false);
+      setUploadingFiles(false);
     }
   };
 
@@ -220,18 +498,72 @@ export default function CreateArticleScreen({ navigation, route }: any) {
 
         {/* 내용 입력 */}
         <View style={styles.inputSection}>
-          <Text style={styles.label}>내용</Text>
-          <TextInput
-            style={styles.contentInput}
-            value={content}
-            onChangeText={setContent}
-            placeholder="내용을 입력하세요"
-            placeholderTextColor="#999"
-            multiline
-            textAlignVertical="top"
-            maxLength={5000}
-          />
+          <View style={styles.contentHeader}>
+            <Text style={styles.label}>내용</Text>
+            <TouchableOpacity 
+              style={styles.editorToggle}
+              onPress={() => setUseWebEditor(!useWebEditor)}
+            >
+              <Text style={styles.editorToggleText}>
+                {useWebEditor ? '텍스트 모드' : '에디터 모드'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {useWebEditor ? (
+            <WebEditor />
+          ) : (
+            <TextInput
+              style={styles.contentInput}
+              value={content}
+              onChangeText={setContent}
+              placeholder="내용을 입력하세요"
+              placeholderTextColor="#999"
+              multiline
+              textAlignVertical="top"
+              maxLength={5000}
+            />
+          )}
           <Text style={styles.charCount}>{content.length}/5000</Text>
+        </View>
+
+        {/* 파일 첨부 */}
+        <View style={styles.inputSection}>
+          <View style={styles.fileHeader}>
+            <Text style={styles.label}>파일 첨부</Text>
+            <TouchableOpacity 
+              style={styles.attachButton}
+              onPress={handleAttachFile}
+              disabled={uploadingFiles}
+            >
+              <Text style={styles.attachButtonText}>
+                {uploadingFiles ? '업로드 중...' : '+ 파일 첨부'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          {attachedFiles.length > 0 && (
+            <View style={styles.attachedFilesContainer}>
+              {attachedFiles.map((file, index) => (
+                <View key={index} style={styles.attachedFileItem}>
+                  <View style={styles.fileInfo}>
+                    <Text style={styles.fileName} numberOfLines={1}>
+                      {file.name}
+                    </Text>
+                    <Text style={styles.fileSize}>
+                      {file.size ? `${(file.size / 1024).toFixed(1)}KB` : '크기 미상'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.removeFileButton}
+                    onPress={() => handleRemoveFile(index)}
+                  >
+                    <Text style={styles.removeFileText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
 
 

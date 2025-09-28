@@ -83,6 +83,11 @@ export interface ArticleWithTags {
   watchCnt?: number | null;
   commentCnt?: number | null;
   comments?: ArticleWithTags[];
+  attachedFiles?: Array<{
+    fileName: string;
+    fileId: number;
+    fileSize: number;
+  }>;
 }
 
 // Article API (실제 백엔드 API 사용)
