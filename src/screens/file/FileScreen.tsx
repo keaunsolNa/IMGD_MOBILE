@@ -6,7 +6,6 @@ import { styles } from '@/styles/screens/file/FileScreen';
 import { GroupAPI, FileAPI, API_BASE_URL } from '@/services/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/redux/store';
-import { store } from '@/redux/store';
 import { getSubjectFromToken } from '@/services/jwt';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -323,67 +322,10 @@ export default function FileScreen() {
   // 파일 다운로드
   const handleDownloadFile = async (file: FileTableDTO) => {
     try {
-      // 웹 환경에서만 다운로드 기능 제공
-      if (Platform.OS !== 'web') {
-        showErrorAlert('다운로드 기능은 웹 환경에서만 사용할 수 있습니다.');
-        return;
-      }
-
-      if (!file.fileId) {
-        showErrorAlert('파일 ID가 없습니다.');
-        return;
-      }
-
-      // 백엔드 다운로드 API 호출
-      const downloadUrl = `${API_BASE_URL}/api/file/downloadFile?fileId=${file.fileId}`;
-      
-      // fetch로 직접 다운로드 시도 (인증 헤더 포함)
-      try {
-        // Redux store에서 토큰 가져오기
-        const state = store.getState();
-        const token = state.auth.accessToken;
-        
-        const headers: HeadersInit = {
-          'Accept': '*/*',
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-        
-        const response = await fetch(downloadUrl, {
-          method: 'GET',
-          headers: headers,
-          credentials: 'include', // 쿠키 포함
-        });
-        
-        if (!response.ok) {
-          console.error(`HTTP ${response.status}: ${response.statusText}`);
-          showErrorAlert('파일 다운로드에 실패했습니다.');
-          return;
-        }
-        
-        const blob = await response.blob();
-        
-        // 다운로드 링크 생성
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = file.fileOrgNm || `file_${file.fileId}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-      } catch (fetchError) {
-        console.error('fetch 오류:', fetchError);
-        showErrorAlert('파일 다운로드에 실패했습니다.');
-        return;
-      }
-      
+      await FileAPI.downloadFile(file);
     } catch (error) {
       console.error('파일 다운로드 오류:', error);
-      showErrorAlert('파일 다운로드 중 오류가 발생했습니다.');
+      showErrorAlert(error instanceof Error ? error.message : '파일 다운로드 중 오류가 발생했습니다.');
     }
   };
 

@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system';
 import { getRefreshToken, saveTokens, clearTokens } from './storage';
 import { store } from '@/redux/store';
 import { setAuth } from '@/redux/authSlice';
+import { ArticleSearch } from '@/types/dto';
 
 function resolveApiBaseUrl(): string {
   console.log('resolveApiBaseUrl');
@@ -196,7 +197,7 @@ export const UserAPI = {
         } as any);
       }
 
-      const response = await fetch(`${API_BASE_URL}/api/file/makeUserProfileImg`, {
+      const response = await fetch(`${API_BASE_URL}/api/file/profileImg`, {
         method: 'POST',
         credentials: 'include',
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -234,18 +235,18 @@ export const UserAPI = {
           return { success: true, message: '프로필 이미지 업로드 성공' };
         }
       } else {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return { success: false, error: `프로필 이미지 업로드 실패: HTTP ${response.status} - ${response.statusText}` };
       }
     } catch (error) {
-      throw error;
+      return { success: false, error: error instanceof Error ? error.message : '프로필 이미지 업로드 중 오류가 발생했습니다.' };
     }
   }
 };
 
 export const FileAPI = {
-  makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/api/file/makeGroupDir`, dto),
-  findFileAndDirectory: (parentId: number, groupId: number) => api.get(`/api/file/findFileAndDirectory`, { params: { parentId, groupId } }),
-  makeDir: (dto: { userId: string; parentId: number; dirNm: string; groupId: number; path: string }) => api.post(`/api/file/makeDir`, dto),
+  makeGroupDir: (dto: { groupId: number; groupNm: string; groupMstUserId?: string }) => api.post(`/api/file/groupDir`, dto),
+  findFileAndDirectory: (parentId: number, groupId: number) => api.get(`/api/file/${parentId}/${groupId}`),
+  makeDir: (dto: { userId: string; parentId: number; dirNm: string; groupId: number; path: string }) => api.post(`/api/file/dir`, dto),
 
   // 파일 업로드: multipart/form-data로 /api/file/makeFile 호출
   makeFile: async (
@@ -284,7 +285,7 @@ export const FileAPI = {
       } as any);
     }
 
-    return fetch(`${API_BASE_URL}/api/file/makeFile`, {
+    return fetch(`${API_BASE_URL}/api/file`, {
       method: 'POST',
       credentials: 'include',
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -293,11 +294,146 @@ export const FileAPI = {
   },
 
   // 파일 ID로 파일 정보 조회
-  findFileById: (fileId: number) => api.get(`/api/file/findFileById`, { params: { fileId } }),
+  findFileById: (fileId: number) => api.get(`/api/file/${fileId}`),
+
+  // 파일 다운로드
+  downloadFile: async (file: { fileId?: number; fileOrgNm?: string }) => {
+    // 웹 환경에서만 다운로드 기능 제공
+    if (Platform.OS !== 'web') {
+      throw new Error('다운로드 기능은 웹 환경에서만 사용할 수 있습니다.');
+    }
+
+    if (!file.fileId) {
+      throw new Error('파일 ID가 없습니다.');
+    }
+
+    try {
+
+      // Redux store에서 토큰 가져오기
+      const state = store.getState();
+      const token = state.auth.accessToken;
+      
+      const headers: HeadersInit = {
+        'Accept': '*/*',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch(`${API_BASE_URL}/api/file/file?fileId=${file.fileId}`, {
+        method: 'GET',
+        headers: headers,
+        credentials: 'include', // 쿠키 포함
+      });
+      
+      if (!response.ok) {
+        return { success: false, error: `파일 다운로드 실패: HTTP ${response.status} - ${response.statusText}` };
+      }
+      
+      const blob = await response.blob();
+      
+      // 다운로드 링크 생성
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = file.fileOrgNm || `file_${file.fileId}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('파일 다운로드 오류:', error);
+      return { success: false, error: error instanceof Error ? error.message : '파일 다운로드 중 오류가 발생했습니다.' };
+    }
+  },
 
   // 파일 삭제
-  deleteFile: (fileId: number) => api.delete(`/api/file/deleteFile`, { params: { fileId } }),
+  deleteFile: (fileId: number) => api.delete(`/api/file/file`, { params: { fileId } }),
 
   // 폴더 삭제
-  deleteDir: (fileId: number) => api.delete(`/api/file/deleteDir`, { params: { fileId } }),
+  deleteDir: (fileId: number) => api.delete(`/api/file/dir`, { params: { fileId } }),
+};
+
+// Community API (community.ts에서 이동)
+export const ArticleAPI = {
+  // 모든 게시글 조회
+  getArticles: (search?: ArticleSearch) => {
+    const params = new URLSearchParams();
+    if (search?.title) params.append('title', search.title);
+    if (search?.article) params.append('article', search.article);
+    if (search?.userNm) params.append('userNm', search.userNm);
+    
+    const queryString = params.toString();
+    const url = queryString ? `/api/article/condition?${queryString}` : '/api/article/condition';
+    
+    return api.get(url);
+  },
+
+  // 게시글 상세 조회
+  getArticle: (id: number) => 
+    api.get(`/api/article/${id}`),
+
+  // 게시글 생성
+  createArticle: (data: any) => 
+    api.post('/api/article', data),
+
+  // 게시글 수정
+  updateArticle: (id: number, data: any) => 
+    api.put(`/api/article/${id}`, data),
+
+  // 댓글 삭제
+  deleteArticle: (id: number) => 
+    api.delete(`/api/article/comment/${id}`),
+
+  // 게시글 좋아요
+  likeArticle: (articleId: number) => 
+    api.put('/api/article/comment', articleId),
+
+  // 댓글 추가
+  insertComment: (articleId: number, commentData: any) => 
+    api.post(`/api/article/comment?articleId=${articleId}`, commentData),
+
+  // 댓글 삭제
+  deleteComment: (articleId: number, commentId: number) => 
+    api.delete(`/api/article/comment?articleId=${articleId}&commentId=${commentId}`),
+};
+
+export const TagAPI = {
+  // 모든 태그 조회
+  getTags: () => {
+    return api.get('/api/tag/findAllTag');
+  },
+
+  // 신규 태그 생성
+  createTag: (data: { name: string; description?: string; color: string }) => 
+    api.post('/api/tag/makeNewTag', data)
+};
+
+export const CommentAPI = {
+  // 댓글 목록 조회
+  getComments: (articleId: number) => 
+    api.get(`/api/comment/${articleId}`),
+
+  // 댓글 생성
+  createComment: (data: { content: string; articleId: number }) => 
+    api.post('/api/comment/create', data)
+};
+
+// 통합 커뮤니티 API (기존 코드와의 호환성을 위해)
+export const CommunityAPI = {
+  getArticles: ArticleAPI.getArticles,
+  getTags: TagAPI.getTags,
+  createTag: TagAPI.createTag,
+  getArticle: ArticleAPI.getArticle,
+  createArticle: ArticleAPI.createArticle,
+  updateArticle: ArticleAPI.updateArticle,
+  deleteArticle: ArticleAPI.deleteArticle,
+  likeArticle: ArticleAPI.likeArticle,
+  insertComment: ArticleAPI.insertComment,
+  deleteComment: ArticleAPI.deleteComment,
+  getComments: CommentAPI.getComments,
+  createComment: CommentAPI.createComment,
 };
