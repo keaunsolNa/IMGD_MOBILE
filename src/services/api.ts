@@ -112,16 +112,16 @@ export const HealthAPI = {
 // --- 도메인 API
 export const GroupAPI = {
   // ApiResponse 구조를 반환하는 API들
-  createGroup: (payload: { groupNm: string }) => api.post(`/api/group/createGroup`, payload),
-  addGroupUser: (dto: any, userId: string) => api.post(`/api/group/makeNewGroupUser`, dto, { params: { userId } }),
-  deleteGroupUser: (dto: any, userId: string) => api.delete(`/api/group/deleteGroupUser`, { data: dto, params: { userId } }),
-  changeMstUserGroup: (dto: any, userId: string) => api.post(`/api/group/changeMstUserGroup`, dto, { params: { userId } }),
-  deleteGroup: (groupId: number) => api.delete(`/api/group/deleteGroup`, { params: { groupId } }),
+  createGroup: (payload: { groupNm: string }) => api.post(`/api/group`, payload),
+  addGroupUser: (dto: any, userId: string) => api.post(`/api/group/user`, dto, { params: { userId } }),
+  deleteGroupUser: (dto: any, userId: string) => api.delete(`/api/group/user`, { data: dto, params: { userId } }),
+  changeMstUserGroup: (dto: any, userId: string) => api.patch(`/api/group/changeMstUserGroup`, dto, { params: { userId } }),
+  deleteGroup: (groupId: number) => api.delete(`/api/group`, { params: { groupId } }),
   
   // 기존 구조를 유지하는 API들 (ApiResponse를 사용하지 않음)
-  findGroupName: (userId: string) => api.get(`/api/group/findGroupName`, { params: { userId } }),
-  findGroupWhatInside: (userId: string) => api.get(`/api/group/findGroupWhatInside`, { params: { userId } }),
-  findGroupUserWhatInside: (groupId: number) => api.get(`/api/group/findGroupUserWhatInside`, { params: { groupId } }),
+  // findGroupName: (userId: string) => api.get(`/api/group/findGroupName`, { params: { userId } }),
+  findGroupWhatInside: (userId: string) => api.get(`/api/group`, { params: { userId } }),
+  findGroupUserWhatInside: (groupId: number) => api.get(`/api/group/user`, { params: { groupId } }),
 };
 
 export const UserAPI = {
@@ -404,12 +404,12 @@ export const ArticleAPI = {
 export const TagAPI = {
   // 모든 태그 조회
   getTags: () => {
-    return api.get('/api/tag/findAllTag');
+    return api.get('/api/tag/all');
   },
 
   // 신규 태그 생성
   createTag: (data: { name: string; description?: string; color: string }) => 
-    api.post('/api/tag/makeNewTag', data)
+    api.post('/api/tag', data)
 };
 
 export const CommentAPI = {
